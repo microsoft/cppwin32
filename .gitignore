@@ -14,11 +14,7 @@
 # Compiled Dynamic libraries
 *.so
 *.dylib
-*.dll
-
-# Fortran module files
-*.mod
-*.smod
+# *.dll
 
 # Compiled Static libraries
 *.lai
@@ -30,3 +26,16 @@
 *.exe
 *.out
 *.app
+
+# Visual Studio files
+.vs
+.vscode
+.nuget
+*.user
+*.nupkg
+
+build
+packages
+Debug
+Release
+Generated Files
