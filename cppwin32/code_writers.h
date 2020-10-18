@@ -1,6 +1,7 @@
 #pragma once
 
 #include "type_writers.h"
+#include "helpers.h"
 
 namespace cppwin32
 {
@@ -32,11 +33,21 @@ namespace cppwin32
         w.write(format);
     }
 
+    [[nodiscard]] static finish_with wrap_impl_namespace(writer& w)
+    {
+        auto format = R"(namespace win32::impl
+{
+)";
+
+        w.write(format);
+
+        return { w, write_close_namespace };
+    }
+
     [[nodiscard]] finish_with wrap_type_namespace(writer& w, std::string_view const& ns)
     {
         // TODO: Move into forwards
-        auto format = R"(#define WIN32_EXPORT
-WIN32_EXPORT namespace win32::@
+        auto format = R"(WIN32_EXPORT namespace win32::@
 {
 )";
 
@@ -131,7 +142,7 @@ WIN32_EXPORT namespace win32::@
                         }
                         else if (nested_type.TypeName().find("__FixedBuffer") != std::string_view::npos)
                         {
-                            array_count = size(nested_type.FieldList());
+                            array_count = static_cast<int32_t>(size(nested_type.FieldList()));
                             field_type = nested_type.FieldList().first.Signature().Type();
                         }
                         else if (nested_type.Flags().Layout() == TypeLayout::ExplicitLayout && nested_type.TypeName().find("__Union") != std::string_view::npos)
@@ -176,5 +187,53 @@ WIN32_EXPORT namespace win32::@
         complex_struct s{ w, type };
 
         w.write(format, type.TypeName(), bind_each<write_struct_field>(s.fields));
+    }
+
+    void write_abi_params(writer& w, method_signature const& method_signature)
+    {
+        separator s{ w };
+        for (auto&& [param, param_signature] : method_signature.params())
+        {
+            s();
+            w.write("% %", param_signature->Type(), param.Name());
+        }
+    }
+
+    void write_abi_return(writer& w, RetTypeSig const& sig)
+    {
+        if (sig)
+        {
+            w.write(sig.Type());
+        }
+        else
+        {
+            w.write("void");
+        }
+    }
+
+    void write_class_abi(writer& w, TypeDef const& type)
+    {
+        w.write(R"(extern "C"
+{
+)");
+        auto const format = R"xyz(    % __stdcall WIN32_IMPL_%(%) noexcept;
+)xyz";
+        for (auto&& method : type.MethodList())
+        {
+            method_signature signature{ method };
+            w.write(format, bind<write_abi_return>(signature.return_signature()), method.Name(), bind<write_abi_params>(signature));
+        }
+        w.write(R"(}
+)");
+    }
+
+    void write_class_method(writer& w, MethodDef const& method)
+    {
+
+    }
+
+    void write_class(writer& w, TypeDef const& type)
+    {
+
     }
 }

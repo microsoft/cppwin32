@@ -28,13 +28,22 @@ int main(int const argc, char* argv[])
             continue;
         }
         writer w;
+        w.write("#define WIN32_EXPORT\n");
         w.type_namespace = ns;
         {
-            auto wrap_type = wrap_type_namespace(w, ns);
+            auto wrap = wrap_type_namespace(w, ns);
             w.write_each<write_enum>(members.enums);
             w.write_each<write_forward>(members.structs);
             w.write_each<write_struct>(members.structs);
         }
+        {
+            w.write_each<write_class_abi>(members.classes);
+        }
+        {
+            auto wrap = wrap_type_namespace(w, ns);
+            w.write_each<write_class>(members.classes);
+        }
+
         w.save_header(o.output_folder.string());
     }
 }

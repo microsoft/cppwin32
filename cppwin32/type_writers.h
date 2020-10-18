@@ -19,6 +19,32 @@ namespace cppwin32
     {
         using writer_base<writer>::write;
         std::string type_namespace;
+        bool abi_types{};
+
+        template<typename T>
+        struct member_value_guard
+        {
+            writer* const owner;
+            T writer::* const member;
+            T const previous;
+            explicit member_value_guard(writer* arg, T writer::* ptr, T value) :
+                owner(arg), member(ptr), previous(std::exchange(owner->*member, value))
+            {
+            }
+
+            ~member_value_guard()
+            {
+                owner->*member = previous;
+            }
+
+            member_value_guard(member_value_guard const&) = delete;
+            member_value_guard& operator=(member_value_guard const&) = delete;
+        };
+
+        [[nodiscard]] auto push_abi_types(bool value)
+        {
+            return member_value_guard(this, &writer::abi_types, value);
+        }
 
         void write_value(int32_t value)
         {
@@ -147,6 +173,10 @@ namespace cppwin32
                 [&](coded_index<TypeDefOrRef> const& type)
                 {
                     write(type);
+                    for (int i = 0; i < signature.ptr_count(); ++i)
+                    {
+                        write('*');
+                    }
                 },
                 [&](auto&& type)
                 {

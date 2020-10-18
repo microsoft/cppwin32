@@ -147,7 +147,9 @@
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
+    <ClInclude Include="base.h" />
     <ClInclude Include="code_writers.h" />
+    <ClInclude Include="helpers.h" />
     <ClInclude Include="text_writer.h" />
     <ClInclude Include="type_writers.h" />
   </ItemGroup>
