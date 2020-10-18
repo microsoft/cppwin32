@@ -2,4 +2,4 @@
 *       text eol=lf
 *.png   -text
 *.exe   -text
-#.dll   -text
+*.dll   -text
