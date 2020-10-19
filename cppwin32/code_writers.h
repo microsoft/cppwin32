@@ -220,8 +220,11 @@ namespace cppwin32
 )xyz";
         for (auto&& method : type.MethodList())
         {
-            method_signature signature{ method };
-            w.write(format, bind<write_abi_return>(signature.return_signature()), method.Name(), bind<write_abi_params>(signature));
+            if (method.Flags().Access() == MemberAccess::Public)
+            {
+                method_signature signature{ method };
+                w.write(format, bind<write_abi_return>(signature.return_signature()), method.Name(), bind<write_abi_params>(signature));
+            }
         }
         w.write(R"(}
 )");

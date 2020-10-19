@@ -174,4 +174,40 @@ namespace winmd::reader
 
         return {};
     }
+
+    enum class category
+    {
+        interface_type,
+        class_type,
+        enum_type,
+        struct_type,
+        delegate_type
+    };
+
+    inline category get_category(TypeDef const& type)
+    {
+        if (type.Flags().Semantics() == TypeSemantics::Interface || get_attribute(type, "System.Runtime.InteropServices"sv, "GuidAttribute"sv))
+        {
+            return category::interface_type;
+        }
+
+        auto const& [extends_namespace, extends_name] = get_base_class_namespace_and_name(type);
+
+        if (extends_name == "Enum"sv && extends_namespace == "System"sv)
+        {
+            return category::enum_type;
+        }
+
+        if (extends_name == "ValueType"sv && extends_namespace == "System"sv)
+        {
+            return category::struct_type;
+        }
+
+        if (extends_name == "MulticastDelegate"sv && extends_namespace == "System"sv)
+        {
+            return category::delegate_type;
+        }
+
+        return category::class_type;
+    }
 }
