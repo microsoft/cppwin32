@@ -145,9 +145,15 @@ namespace cppwin32
                             array_count = static_cast<int32_t>(size(nested_type.FieldList()));
                             field_type = nested_type.FieldList().first.Signature().Type();
                         }
-                        else if (nested_type.Flags().Layout() == TypeLayout::ExplicitLayout && nested_type.TypeName().find("__Union") != std::string_view::npos)
+                        else if (nested_type.Flags().Layout() == TypeLayout::ExplicitLayout && nested_type.TypeName().find("_e__Union") != std::string_view::npos)
                         {
                             // TODO: unions
+                            continue;
+                        }
+                        else if (nested_type.Flags().Layout() == TypeLayout::ExplicitLayout && nested_type.TypeName().find("_e__Struct") != std::string_view::npos)
+                        {
+                            // TODO: unions
+                            continue;
                         }
                     }
                     
@@ -211,6 +217,44 @@ namespace cppwin32
         }
     }
 
+    int get_param_size(ParamSig const& param)
+    {
+        if (auto e = std::get_if<ElementType>(&param.Type().Type()))
+        {
+            if (param.Type().ptr_count() == 0)
+            {
+                switch (*e)
+                {
+                case ElementType::U8:
+                case ElementType::I8:
+                case ElementType::R8:
+                    return 8;
+
+                default:
+                    return 4;
+                }
+            }
+            else
+            {
+                return 4;
+            }
+        }
+        else
+        {
+            return 4;
+        }
+    }
+
+    void write_abi_link(writer& w, method_signature const& method_signature)
+    {
+        int count = 0;
+        for (auto&& [param, param_signature] : method_signature.params())
+        {
+            count += get_param_size(*param_signature);
+        }
+        w.write("%, %", method_signature.method().Name(), count);
+    }
+
     void write_class_abi(writer& w, TypeDef const& type)
     {
         w.write(R"(extern "C"
@@ -228,6 +272,16 @@ namespace cppwin32
         }
         w.write(R"(}
 )");
+
+        for (auto&& method : type.MethodList())
+        {
+            if (method.Flags().Access() == MemberAccess::Public)
+            {
+                method_signature signature{ method };
+                w.write("WIN32_IMPL_LINK(%)\n", bind<write_abi_link>(signature));
+            }
+        }
+        w.write("\n");
     }
 
     void write_class_method(writer& w, MethodDef const& method)
