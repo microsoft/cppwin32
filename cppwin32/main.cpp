@@ -28,7 +28,7 @@ int main(int const argc, char* argv[])
             continue;
         }
         writer w;
-        w.write("#define WIN32_EXPORT\n");
+        w.write("#include \"base.h\"\n");
         w.type_namespace = ns;
         {
             auto wrap = wrap_type_namespace(w, ns);
