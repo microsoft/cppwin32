@@ -125,6 +125,9 @@ namespace cppwin32
                 {
                     switch (type)
                     {
+                    case ElementType::Boolean:
+                        write("bool");
+                        break;
                     case ElementType::I1:
                         write("int8_t");
                         break;
