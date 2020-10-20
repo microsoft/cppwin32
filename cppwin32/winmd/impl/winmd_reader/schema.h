@@ -179,6 +179,7 @@ namespace winmd::reader
         auto CustomAttribute() const;
         auto Constant() const;
         auto Parent() const;
+        auto FieldMarshal() const;
     };
 
     struct Param : row_base<Param>
@@ -202,6 +203,7 @@ namespace winmd::reader
 
         auto CustomAttribute() const;
         auto Constant() const;
+        auto FieldMarshal() const;
     };
 
     struct InterfaceImpl : row_base<InterfaceImpl>
@@ -255,6 +257,17 @@ namespace winmd::reader
     struct FieldMarshal : row_base<FieldMarshal>
     {
         using row_base::row_base;
+
+        auto Parent() const
+        {
+            return get_coded_index<HasFieldMarshal>(0);
+        }
+
+        auto Signature() const
+        {
+            auto cursor = get_blob(1);
+            return uncompress_enum<NativeType>(cursor);
+        }
     };
 
     struct TypeSpec : row_base<TypeSpec>
@@ -671,5 +684,15 @@ namespace winmd::reader
     inline bool operator<(TypeDef const& left, NestedClass const& right) noexcept
     {
         return left < right.NestedType();
+    }
+
+    inline bool operator<(coded_index<HasFieldMarshal> const& left, FieldMarshal const& right) noexcept
+    {
+        return left < right.Parent();
+    }
+
+    inline bool operator<(FieldMarshal const& left, coded_index<HasFieldMarshal> const& right) noexcept
+    {
+        return left.Parent() < right;
     }
 }

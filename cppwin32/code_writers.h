@@ -201,7 +201,44 @@ namespace cppwin32
         for (auto&& [param, param_signature] : method_signature.params())
         {
             s();
-            w.write("% %", param_signature->Type(), param.Name());
+            std::string type;
+            if (param.Flags().HasFieldMarshal())
+            {
+                auto fieldMarshal = param.FieldMarshal();
+                switch (fieldMarshal.Signature())
+                {
+                case NativeType::Lpstr:
+                    if (param.Flags().In())
+                    {
+                        type = "const char*";
+                    }
+                    else
+                    {
+                        type = "char*";
+                    }
+                    break;
+
+                case NativeType::Lpwstr:
+                    if (param.Flags().In())
+                    {
+                        type = "const wchar_t*";
+                    }
+                    else
+                    {
+                        type = "wchar_t*";
+                    }
+                    break;
+
+                default:
+                    type = w.write_temp("%", param_signature->Type());
+                    break;
+                }
+            }
+            else
+            {
+                type = w.write_temp("%", param_signature->Type());
+            }
+            w.write("% %", type, param.Name());
         }
     }
 
