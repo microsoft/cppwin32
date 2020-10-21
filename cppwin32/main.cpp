@@ -36,7 +36,7 @@ int main(int const argc, char* argv[])
             w.write_each<write_forward>(members.structs);
             w.write_each<write_forward>(members.interfaces);
 
-            w.write_each<write_struct>(members.structs);
+            write_structs(w, members.structs);
         }
         {
             w.write_each<write_class_abi>(members.classes);

@@ -172,6 +172,7 @@ namespace cppwin32
                             // TODO: unions
                             continue;
                         }
+                        continue;
                     }
                     
                     fields.push_back({ name, w.write_temp("%", field_type), array_count });
@@ -185,6 +186,108 @@ namespace cppwin32
         complex_struct s{ w, type };
 
         w.write(format, type.TypeName(), bind_each<write_struct_field>(s.fields));
+    }
+
+    struct dependency_sorter
+    {
+        struct node
+        {
+            std::vector<TypeDef> edges;
+            bool temporary{};
+            bool permanent{};
+
+            // Number of edges on an individual node should be small, so linear search is fine.
+            void add_edge(TypeDef const& edge)
+            {
+                if (std::find(edges.begin(), edges.end(), edge) == edges.end())
+                {
+                    edges.push_back(edge);
+                }
+            }
+        };
+
+        std::map<TypeDef, node> dependency_map;
+        using value_type = std::map<TypeDef, node>::value_type;
+
+        void add(TypeDef const& type)
+        {
+#ifdef _DEBUG
+            auto type_name = type.TypeName();
+#endif
+            auto [it, inserted] = dependency_map.insert({ type, {} });
+            if (!inserted) return;
+            for (auto&& field : type.FieldList())
+            {
+#ifdef _DEBUG
+                auto field_name = field.Name();
+#endif
+                auto const signature = field.Signature();
+                if (signature.Type().ptr_count() == 0)
+                {
+                    if (auto const field_type = std::get_if<coded_index<TypeDefOrRef>>(&signature.Type().Type()))
+                    {
+                        if (field_type->type() == TypeDefOrRef::TypeDef)
+                        {
+                            auto field_type_def = field_type->TypeDef();
+                            if (get_category(field_type_def) != category::enum_type)
+                            {
+                                it->second.add_edge(field_type_def);
+                                add(field_type_def);
+                            }
+                        }
+                    }
+                }
+            }
+        }
+
+        void visit(value_type& v, std::vector<TypeDef>& sorted)
+        {
+#ifdef _DEBUG
+            auto type_name = v.first.TypeName();
+#endif
+
+            if (v.second.permanent) return;
+            if (v.second.temporary) throw std::invalid_argument("Cyclic dependency graph encountered");
+
+            v.second.temporary = true;
+            for (auto&& edge : v.second.edges)
+            {
+                auto it = dependency_map.find(edge);
+                XLANG_ASSERT(it != dependency_map.end());
+                visit(*it, sorted);
+            }
+            v.second.temporary = false;
+            v.second.permanent = true;
+            if (!v.first.EnclosingType())
+            {
+                sorted.push_back(v.first);
+            }
+        }
+
+        std::vector<TypeDef> sort()
+        {
+            std::vector<TypeDef> result;
+            auto eligible = [](value_type const& v) { return !v.second.permanent; };
+            for (auto it = std::find_if(dependency_map.begin(), dependency_map.end(), eligible)
+                ; it != dependency_map.end()
+                ; it = std::find_if(dependency_map.begin(), dependency_map.end(), eligible))
+            {
+                visit(*it, result);
+            }
+            return result;
+        }
+    };
+
+    void write_structs(writer& w, std::vector<TypeDef> const& structs)
+    {
+        dependency_sorter ds;
+        for (auto&& type : structs)
+        {
+            ds.add(type);
+        }
+        
+        auto sorted_structs = ds.sort();
+        w.write_each<write_struct>(sorted_structs);
     }
 
     void write_abi_params(writer& w, method_signature const& method_signature)

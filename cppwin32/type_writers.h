@@ -95,7 +95,7 @@ namespace cppwin32
         {
             if (type.TypeNamespace() == "System" && type.TypeName() == "Guid")
             {
-                write("guid");
+                write("win32::guid");
             }
             else
             {
