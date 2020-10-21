@@ -417,15 +417,111 @@ namespace cppwin32
         }
         w.write("\n");
     }
-
-    void write_class_method(writer& w, MethodDef const& method)
+    
+    void write_method_params(writer& w, method_signature const& method_signature)
     {
+        separator s{ w };
+        for (auto&& [param, param_signature] : method_signature.params())
+        {
+            s();
+            std::string type;
+            if (param.Flags().HasFieldMarshal())
+            {
+                auto fieldMarshal = param.FieldMarshal();
+                switch (fieldMarshal.Signature().type)
+                {
+                case NativeType::Lpstr:
+                    if (param.Flags().In())
+                    {
+                        type = "const char*";
+                    }
+                    else
+                    {
+                        type = "char*";
+                    }
+                    break;
 
+                case NativeType::Lpwstr:
+                    if (param.Flags().In())
+                    {
+                        type = "const wchar_t*";
+                    }
+                    else
+                    {
+                        type = "wchar_t*";
+                    }
+                    break;
+
+                default:
+                    type = w.write_temp("%", param_signature->Type());
+                    break;
+                }
+            }
+            else
+            {
+                type = w.write_temp("%", param_signature->Type());
+            }
+            w.write("% %", type, param.Name());
+        }
+    }
+
+    void write_method_args(writer& w, method_signature const& method_signature)
+    {
+        separator s{ w };
+        for (auto&& [param, param_signature] : method_signature.params())
+        {
+            s();
+            w.write(param.Name());
+        }
+    }
+
+    void write_method_return(writer& w, method_signature const& method_signature)
+    {
+        auto const& ret = method_signature.return_signature();
+        if (ret)
+        {
+            w.write(ret.Type());
+        }
+        else
+        {
+            w.write("void");
+        }
+    }
+
+    void write_class_method(writer& w, method_signature const& method_signature)
+    {
+        auto const format = R"xyz(        %% %(%)
+        {
+            return WIN32_IMPL_%(%);
+        }
+)xyz";
+        std::string_view modifier;
+        if (method_signature.method().Flags().Static())
+        {
+            modifier = "static ";
+        }
+        w.write(format, modifier, bind<write_method_return>(method_signature), method_signature.method().Name(), bind<write_method_params>(method_signature),
+            method_signature.method().Name(), bind<write_method_args>(method_signature));
     }
 
     void write_class(writer& w, TypeDef const& type)
     {
-
+        {
+            auto const format = R"(    struct %
+    {
+)";
+            w.write(format, type.TypeName());
+        }
+        for (auto&& method : type.MethodList())
+        {
+            if (method.Flags().Access() == MemberAccess::Public)
+            {
+                method_signature signature{ method };
+                write_class_method(w, signature);
+            }
+        }
+        w.write(R"(
+    };)");
     }
 
     void write_delegate_forward(writer& w, TypeDef const& type)
