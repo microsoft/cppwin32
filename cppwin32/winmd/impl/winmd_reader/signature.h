@@ -523,4 +523,10 @@ namespace winmd::reader
             break;
         }
     }
+
+    struct MarshallingDescriptor
+    {
+        bool is_array;
+        NativeType type;
+    };
 }

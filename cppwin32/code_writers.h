@@ -300,7 +300,7 @@ namespace cppwin32
             if (param.Flags().HasFieldMarshal())
             {
                 auto fieldMarshal = param.FieldMarshal();
-                switch (fieldMarshal.Signature())
+                switch (fieldMarshal.Signature().type)
                 {
                 case NativeType::Lpstr:
                     if (param.Flags().In())

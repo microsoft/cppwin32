@@ -268,7 +268,15 @@ namespace winmd::reader
         auto Signature() const
         {
             auto cursor = get_blob(1);
-            return uncompress_enum<NativeType>(cursor);
+            auto value = uncompress_enum<NativeType>(cursor);
+            if (value == NativeType::Array)
+            {
+                return MarshallingDescriptor{ true, uncompress_enum<NativeType>(cursor) };
+            }
+            else
+            {
+                return MarshallingDescriptor{ false, value };
+            }
         }
     };
 
