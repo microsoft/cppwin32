@@ -524,11 +524,69 @@ namespace cppwin32
     };)");
     }
 
-    void write_delegate_forward(writer& w, TypeDef const& type)
+    void write_delegate_params(writer& w, method_signature const& method_signature)
     {
-        auto const format = R"(    using % = void*;
-)";
-        w.write(format, type.TypeName());
+        separator s{ w };
+        for (auto&& [param, param_signature] : method_signature.params())
+        {
+            s();
+            std::string type;
+            if (param.Flags().HasFieldMarshal())
+            {
+                auto fieldMarshal = param.FieldMarshal();
+                switch (fieldMarshal.Signature().type)
+                {
+                case NativeType::Lpstr:
+                    if (param.Flags().In())
+                    {
+                        type = "const char*";
+                    }
+                    else
+                    {
+                        type = "char*";
+                    }
+                    break;
+
+                case NativeType::Lpwstr:
+                    if (param.Flags().In())
+                    {
+                        type = "const wchar_t*";
+                    }
+                    else
+                    {
+                        type = "wchar_t*";
+                    }
+                    break;
+
+                default:
+                    type = w.write_temp("%", param_signature->Type());
+                    break;
+                }
+            }
+            else
+            {
+                type = w.write_temp("%", param_signature->Type());
+            }
+            w.write("%", type);
+        }
+    }
+
+    void write_delegate(writer& w, TypeDef const& type)
+    {
+        auto const format = R"xyz(    using % = std::add_pointer_t<% __stdcall(%)>;
+)xyz";
+        MethodDef invoke;
+        for (auto&& method : type.MethodList())
+        {
+            if (method.Name() == "Invoke")
+            {
+                invoke = method;
+                break;
+            }
+        }
+        method_signature method_signature{ invoke };
+
+        w.write(format, type.TypeName(), bind<write_method_return>(method_signature), bind<write_delegate_params>(method_signature));
     }
 
     void write_enum_operators(writer& w, TypeDef const& type)
