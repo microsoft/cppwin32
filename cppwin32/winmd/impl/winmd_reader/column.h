@@ -513,11 +513,23 @@ namespace winmd::reader
         return get_target_row<TypeDef>(1);
     }
 
+    inline auto TypeDef::EnclosingType() const
+    {
+        auto const range = equal_range(get_database().NestedClass, *this);
+        TypeDef result;
+        if (range.first != range.second)
+        {
+            XLANG_ASSERT(range.second - range.first == 1);
+            result = range.first.EnclosingType();
+        }
+        return result;
+    }
+
     inline auto Field::FieldMarshal() const
     {
         auto const range = equal_range(get_database().FieldMarshal, coded_index<HasFieldMarshal>());
         reader::FieldMarshal result;
-        if (range.second != range.first)
+        if (range.first != range.second)
         {
             XLANG_ASSERT(range.second - range.first == 1);
             result = range.first;
@@ -529,7 +541,7 @@ namespace winmd::reader
     {
         auto const range = equal_range(get_database().FieldMarshal, coded_index<HasFieldMarshal>());
         reader::FieldMarshal result;
-        if (range.second != range.first)
+        if (range.first != range.second)
         {
             XLANG_ASSERT(range.second - range.first == 1);
             result = range.first;

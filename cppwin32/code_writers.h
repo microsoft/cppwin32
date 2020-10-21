@@ -107,6 +107,17 @@ namespace cppwin32
         }
     }
 
+    TypeDef get_nested_type(TypeSig const& type)
+    {
+        auto index = std::get_if<coded_index<TypeDefOrRef>>(&type.Type());
+        TypeDef result{};
+        if (index && index->type() == TypeDefOrRef::TypeDef && index->TypeDef().EnclosingType())
+        {
+            result = index->TypeDef();
+        }
+        return result;
+    }
+
     void write_struct(writer& w, TypeDef const& type)
     {
         auto format = R"(    struct %
@@ -114,6 +125,10 @@ namespace cppwin32
 %    };
 )";
         auto const name = type.TypeName();
+        if (name == "BOOT_AREA_INFO")
+        {
+            std::string temp = name.data();
+        }
         struct complex_struct
         {
             complex_struct(writer& w, TypeDef const& type)
@@ -126,7 +141,7 @@ namespace cppwin32
                     auto field_type = field.Signature().Type();
                     std::optional<int32_t> array_count;
                     
-                    if (auto nested_type = get_nested_type(field_type, type.get_database()))
+                    if (auto nested_type = get_nested_type(field_type))
                     {
                         auto buffer_attribute = get_attribute(field, "System.Runtime.CompilerServices", "FixedBufferAttribute");
                         if (buffer_attribute)
@@ -139,18 +154,20 @@ namespace cppwin32
                             array_count = std::get<int32_t>(std::get<ElemSig>(sig.FixedArgs()[1].value).value);
                             auto nested_type = std::get<coded_index<TypeDefOrRef>>(field_type.Type());
                             field_type = nested_type.TypeDef().FieldList().first.Signature().Type();
+                            continue;
                         }
                         else if (nested_type.TypeName().find("__FixedBuffer") != std::string_view::npos)
                         {
                             array_count = static_cast<int32_t>(size(nested_type.FieldList()));
                             field_type = nested_type.FieldList().first.Signature().Type();
+                            continue;
                         }
                         else if (nested_type.Flags().Layout() == TypeLayout::ExplicitLayout && nested_type.TypeName().find("_e__Union") != std::string_view::npos)
                         {
                             // TODO: unions
                             continue;
                         }
-                        else if (nested_type.Flags().Layout() == TypeLayout::ExplicitLayout && nested_type.TypeName().find("_e__Struct") != std::string_view::npos)
+                        else if (nested_type.TypeName().find("_e__Struct") != std::string_view::npos)
                         {
                             // TODO: unions
                             continue;
@@ -158,31 +175,6 @@ namespace cppwin32
                     }
                     
                     fields.push_back({ name, w.write_temp("%", field_type), array_count });
-                }
-            }
-
-            static TypeDef get_nested_type(TypeSig const& sig, database const& db)
-            {
-                auto possible_nested_type = std::get_if<coded_index<TypeDefOrRef>>(&sig.Type());
-                if (!possible_nested_type)
-                {
-                    return {};
-                }
-
-                if (possible_nested_type->type() != TypeDefOrRef::TypeDef)
-                {
-                    return {};
-                }
-
-                auto type = possible_nested_type->TypeDef();
-                auto range = equal_range(db.NestedClass, type);
-                if (empty(range))
-                {
-                    return {};
-                }
-                else
-                {
-                    return type;
                 }
             }
 

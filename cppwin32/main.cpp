@@ -34,6 +34,8 @@ int main(int const argc, char* argv[])
             auto wrap = wrap_type_namespace(w, ns);
             w.write_each<write_enum>(members.enums);
             w.write_each<write_forward>(members.structs);
+            w.write_each<write_forward>(members.interfaces);
+
             w.write_each<write_struct>(members.structs);
         }
         {

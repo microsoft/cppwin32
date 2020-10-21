@@ -76,6 +76,8 @@ namespace winmd::reader
         auto EventList() const;
         auto MethodImplList() const;
 
+        auto EnclosingType() const;
+
         bool is_enum() const;
         auto get_enum_definition() const;
     };
