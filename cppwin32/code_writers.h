@@ -394,6 +394,8 @@ namespace cppwin32
 )");
         auto const format = R"xyz(    % __stdcall WIN32_IMPL_%(%) noexcept;
 )xyz";
+        auto guard = w.push_full_namespace(true);
+
         for (auto&& method : type.MethodList())
         {
             if (method.Flags().Access() == MemberAccess::Public)
@@ -424,5 +426,12 @@ namespace cppwin32
     void write_class(writer& w, TypeDef const& type)
     {
 
+    }
+
+    void write_delegate_forward(writer& w, TypeDef const& type)
+    {
+        auto const format = R"(    using % = void*;
+)";
+        w.write(format, type.TypeName());
     }
 }

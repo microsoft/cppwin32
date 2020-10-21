@@ -35,6 +35,7 @@ int main(int const argc, char* argv[])
             w.write_each<write_enum>(members.enums);
             w.write_each<write_forward>(members.structs);
             w.write_each<write_forward>(members.interfaces);
+            w.write_each<write_delegate_forward>(members.delegates);
 
             write_structs(w, members.structs);
         }

@@ -20,6 +20,7 @@ namespace cppwin32
         using writer_base<writer>::write;
         std::string type_namespace;
         bool abi_types{};
+        bool full_namespace{};
 
         template<typename T>
         struct member_value_guard
@@ -44,6 +45,11 @@ namespace cppwin32
         [[nodiscard]] auto push_abi_types(bool value)
         {
             return member_value_guard(this, &writer::abi_types, value);
+        }
+
+        [[nodiscard]] auto push_full_namespace(bool value)
+        {
+            return member_value_guard(this, &writer::full_namespace, value);
         }
 
         void write_value(int32_t value)
@@ -88,6 +94,10 @@ namespace cppwin32
 
         void write(TypeDef const& type)
         {
+            if (full_namespace)
+            {
+                write("win32::");
+            }
             write("@::%", type.TypeNamespace(), type.TypeName());
         }
 
@@ -99,6 +109,10 @@ namespace cppwin32
             }
             else
             {
+                if (full_namespace)
+                {
+                    write("win32::");
+                }
                 write("@::%", type.TypeNamespace(), type.TypeName());
             }
         }
