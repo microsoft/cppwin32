@@ -45,6 +45,7 @@ int main(int const argc, char* argv[])
         {
             auto wrap = wrap_type_namespace(w, ns);
             w.write_each<write_class>(members.classes);
+            w.write_each<write_enum_operators>(members.enums);
         }
 
         w.save_header(o.output_folder.string());

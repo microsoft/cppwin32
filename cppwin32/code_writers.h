@@ -35,7 +35,7 @@ namespace cppwin32
 
     [[nodiscard]] static finish_with wrap_impl_namespace(writer& w)
     {
-        auto format = R"(namespace win32::impl
+        auto format = R"(namespace win32::_impl_
 {
 )";
 
@@ -433,5 +433,49 @@ namespace cppwin32
         auto const format = R"(    using % = void*;
 )";
         w.write(format, type.TypeName());
+    }
+
+    void write_enum_operators(writer& w, TypeDef const& type)
+    {
+        if (!get_attribute(type, "System", "FlagsAttribute"))
+        {
+            return;
+        }
+
+        auto name = type.TypeName();
+
+        auto format = R"(    constexpr auto operator|(% const left, % const right) noexcept
+    {
+        return static_cast<%>(_impl_::to_underlying_type(left) | _impl_::to_underlying_type(right));
+    }
+    constexpr auto operator|=(%& left, % const right) noexcept
+    {
+        left = left | right;
+        return left;
+    }
+    constexpr auto operator&(% const left, % const right) noexcept
+    {
+        return static_cast<%>(_impl_::to_underlying_type(left) & _impl_::to_underlying_type(right));
+    }
+    constexpr auto operator&=(%& left, % const right) noexcept
+    {
+        left = left & right;
+        return left;
+    }
+    constexpr auto operator~(% const value) noexcept
+    {
+        return static_cast<%>(~_impl_::to_underlying_type(value));
+    }
+    constexpr auto operator^^(% const left, % const right) noexcept
+    {
+        return static_cast<%>(_impl_::to_underlying_type(left) ^^ _impl_::to_underlying_type(right));
+    }
+    constexpr auto operator^^=(%& left, % const right) noexcept
+    {
+        left = left ^^ right;
+        return left;
+    }
+)";
+        w.write(format, name, name, name, name, name, name, name, name, name, name, name, name, name, name, name, name, name);
     }
 }

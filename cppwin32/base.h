@@ -4,6 +4,7 @@
 #include <stddef.h>
 #include <stdint.h>
 #include <string.h>
+#include <type_traits>
 
 #ifdef _DEBUG
 
@@ -88,5 +89,14 @@ WIN32_EXPORT namespace win32
     inline bool operator<(guid const& left, guid const& right) noexcept
     {
         return memcmp(&left, &right, sizeof(left)) < 0;
+    }
+}
+
+namespace win32::_impl_
+{
+    template <typename T>
+    constexpr auto to_underlying_type(T const value) noexcept
+    {
+        return static_cast<std::underlying_type_t<T>>(value);
     }
 }
