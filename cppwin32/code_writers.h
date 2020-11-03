@@ -632,4 +632,75 @@ namespace cppwin32
 )";
         w.write(format, name, name, name, name, name, name, name, name, name, name, name, name, name, name, name, name, name);
     }
+
+    struct guid
+    {
+        uint32_t Data1;
+        uint16_t Data2;
+        uint16_t Data3;
+        uint8_t  Data4[8];
+    };
+
+    guid to_guid(std::string_view const& str)
+    {
+        if (str.size() < 36)
+        {
+            throw_invalid("Invalid GuidAttribute blob");
+        }
+        guid result;
+        auto const data = str.data();
+        std::from_chars(data,      data + 8,  result.Data1, 16);
+        std::from_chars(data + 9,  data + 13, result.Data2, 16);
+        std::from_chars(data + 14, data + 18, result.Data3, 16);
+        std::from_chars(data + 19, data + 21, result.Data4[0], 16);
+        std::from_chars(data + 21, data + 23, result.Data4[1], 16);
+        std::from_chars(data + 24, data + 26, result.Data4[2], 16);
+        std::from_chars(data + 26, data + 28, result.Data4[3], 16);
+        std::from_chars(data + 28, data + 30, result.Data4[4], 16);
+        std::from_chars(data + 30, data + 32, result.Data4[5], 16);
+        std::from_chars(data + 32, data + 34, result.Data4[6], 16);
+        std::from_chars(data + 34, data + 36, result.Data4[7], 16);
+        return result;
+    }
+
+    void write_guid_value(writer& w, guid const& g)
+    {
+        w.write_printf("0x%08X,0x%04X,0x%04X,{ 0x%02X,0x%02X,0x%02X,0x%02X,0x%02X,0x%02X,0x%02X,0x%02X }",
+            g.Data1,
+            g.Data2,
+            g.Data3,
+            g.Data4[0],
+            g.Data4[1],
+            g.Data4[2],
+            g.Data4[3],
+            g.Data4[4],
+            g.Data4[5],
+            g.Data4[6],
+            g.Data4[7]);
+    }
+
+    void write_guid(writer& w, TypeDef const& type)
+    {
+        if (type.TypeName() == "IUnknown")
+        {
+            return;
+        }
+        auto attribute = get_attribute(type, "System.Runtime.InteropServices", "GuidAttribute");
+        if (!attribute)
+        {
+            throw_invalid("'System.Runtime.InteropServices.GuidAttribute' attribute for type '", type.TypeNamespace(), ".", type.TypeName(), "' not found");
+        }
+
+        auto const sig = attribute.Value();
+        auto const guid_str = std::get<std::string_view>(std::get<ElemSig>(sig.FixedArgs()[0].value).value);
+        auto const guid_value = to_guid(guid_str);
+
+        auto format = R"(    template <> inline constexpr guid guid_v<%>{ % }; // %
+)";
+
+        w.write(format,
+            type,
+            bind<write_guid_value>(guid_value),
+            guid_str);
+    }
 }
