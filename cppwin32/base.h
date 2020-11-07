@@ -20,6 +20,12 @@
 
 #endif
 
+#ifdef __INTELLISENSE__
+#define WIN32_IMPL_AUTO(...) __VA_ARGS__
+#else
+#define WIN32_IMPL_AUTO(...) auto
+#endif
+
 #ifndef WIN32_EXPORT
 #define WIN32_EXPORT
 #endif
@@ -151,6 +157,12 @@ namespace win32::_impl_
     template <typename T>
     using abi_t = typename abi<T>::type;
 
+    template <typename T, typename = std::void_t<>>
+    struct default_interface
+    {
+        using type = T;
+    };
+
     template <typename T>
 #ifdef WIN32_IMPL_IUNKNOWN_DEFINED
 #ifdef __clang__
@@ -175,6 +187,30 @@ namespace win32::_impl_
     struct is_implements<T, std::void_t<typename T::implements_type>> : std::true_type {};
 
     template <typename T>
+    T empty_value() noexcept
+    {
+        if constexpr (std::is_base_of_v<Microsoft::Windows::Sdk::IUnknown, T>)
+        {
+            return nullptr;
+        }
+        else
+        {
+            return {};
+        }
+    }
+
+    template <typename D, typename I, typename Enable = void>
+    struct produce_base;
+
+    template <typename D, typename I>
+    struct produce;
+
+    template <typename D>
+    struct produce<D, Microsoft::Windows::Sdk::IUnknown> : produce_base<D, Microsoft::Windows::Sdk::IUnknown>
+    {
+    };
+
+    template <typename T>
     inline constexpr bool is_implements_v = is_implements<T>::value;
 
     template <typename T>
@@ -191,6 +227,24 @@ namespace win32::_impl_
 
     template <typename T>
     using wrapped_type_t = typename wrapped_type<T>::type;
+}
+
+WIN32_EXPORT namespace win32
+{
+    template <typename T>
+    using default_interface = typename _impl_::default_interface<T>::type;
+
+    template <typename T>
+    constexpr guid const& guid_of() noexcept
+    {
+        return _impl_::guid_v<default_interface<T>>;
+    }
+
+    template <typename... T>
+    bool is_guid_of(guid const& id) noexcept
+    {
+        return ((id == guid_of<T>()) || ...);
+    }
 }
 
 namespace win32::_impl_
@@ -337,33 +391,33 @@ WIN32_EXPORT namespace win32::Microsoft::Windows::Sdk
         template <typename To>
         auto as() const
         {
-            return impl::as<To>(m_ptr);
+            return _impl_::as<To>(m_ptr);
         }
 
         template <typename To>
         auto try_as() const noexcept
         {
-            return impl::try_as<To>(m_ptr);
+            return _impl_::try_as<To>(m_ptr);
         }
 
         template <typename To>
         void as(To& to) const
         {
-            to = as<impl::wrapped_type_t<To>>();
+            to = as<_impl_::wrapped_type_t<To>>();
         }
 
         template <typename To>
         bool try_as(To& to) const noexcept
         {
-            if constexpr (impl::is_com_interface_v<To> || !std::is_same_v<To, impl::wrapped_type_t<To>>)
+            if constexpr (_impl_::is_com_interface_v<To> || !std::is_same_v<To, _impl_::wrapped_type_t<To>>)
             {
-                to = try_as<impl::wrapped_type_t<To>>();
+                to = try_as<_impl_::wrapped_type_t<To>>();
                 return static_cast<bool>(to);
             }
             else
             {
                 auto result = try_as<To>();
-                to = result.has_value() ? result.value() : impl::empty_value<To>();
+                to = result.has_value() ? result.value() : _impl_::empty_value<To>();
                 return result.has_value();
             }
         }
@@ -410,7 +464,7 @@ WIN32_EXPORT namespace win32
     template <typename T, std::enable_if_t<!std::is_base_of_v<Microsoft::Windows::Sdk::IUnknown, T>, int> = 0>
     auto get_abi(T const& object) noexcept
     {
-        return reinterpret_cast<impl::abi_t<T> const&>(object);
+        return reinterpret_cast<_impl_::abi_t<T> const&>(object);
     }
 
     template <typename T, std::enable_if_t<!std::is_base_of_v<Microsoft::Windows::Sdk::IUnknown, T>, int> = 0>
@@ -421,7 +475,7 @@ WIN32_EXPORT namespace win32
             object = {};
         }
 
-        return reinterpret_cast<impl::abi_t<T>*>(&object);
+        return reinterpret_cast<_impl_::abi_t<T>*>(&object);
     }
 
     template <typename T, typename V, std::enable_if_t<!std::is_base_of_v<Microsoft::Windows::Sdk::IUnknown, T>, int> = 0>
@@ -439,7 +493,7 @@ WIN32_EXPORT namespace win32
     template <typename T, std::enable_if_t<!std::is_base_of_v<Microsoft::Windows::Sdk::IUnknown, std::decay_t<T>> && !std::is_convertible_v<T, std::wstring_view>, int> = 0>
     auto detach_abi(T&& object)
     {
-        impl::abi_t<T> result{};
+        _impl_::abi_t<T> result{};
         reinterpret_cast<T&>(result) = std::move(object);
         return result;
     }
@@ -566,7 +620,7 @@ WIN32_EXPORT namespace win32
     template <typename T>
     struct com_ptr
     {
-        using type = impl::abi_t<T>;
+        using type = _impl_::abi_t<T>;
 
         com_ptr(std::nullptr_t = nullptr) noexcept {}
 
@@ -677,33 +731,33 @@ WIN32_EXPORT namespace win32
         template <typename To>
         auto as() const
         {
-            return impl::as<To>(m_ptr);
+            return _impl_::as<To>(m_ptr);
         }
 
         template <typename To>
         auto try_as() const noexcept
         {
-            return impl::try_as<To>(m_ptr);
+            return _impl_::try_as<To>(m_ptr);
         }
 
         template <typename To>
         void as(To& to) const
         {
-            to = as<impl::wrapped_type_t<To>>();
+            to = as<_impl_::wrapped_type_t<To>>();
         }
 
         template <typename To>
         bool try_as(To& to) const noexcept
         {
-            if constexpr (impl::is_com_interface_v<To> || !std::is_same_v<To, impl::wrapped_type_t<To>>)
+            if constexpr (_impl_::is_com_interface_v<To> || !std::is_same_v<To, _impl_::wrapped_type_t<To>>)
             {
-                to = try_as<impl::wrapped_type_t<To>>();
+                to = try_as<_impl_::wrapped_type_t<To>>();
                 return static_cast<bool>(to);
             }
             else
             {
                 auto result = try_as<To>();
-                to = result.has_value() ? result.value() : impl::empty_value<To>();
+                to = result.has_value() ? result.value() : _impl_::empty_value<To>();
                 return result.has_value();
             }
         }

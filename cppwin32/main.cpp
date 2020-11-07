@@ -42,13 +42,31 @@ int main(int const argc, char* argv[])
             w.write_each<write_forward>(members.interfaces);
             w.write("#pragma endregion forward_declarations\n\n");
 
-            w.write("#pragma region guids\n");
-            w.write_each<write_guid>(members.interfaces);
-            w.write("#pragma endregion guids\n");
-
             w.write("#pragma region delegates\n");
             w.write_each<write_delegate>(members.delegates);
             w.write("#pragma endregion delegates\n\n");
+        }
+        {
+            auto warp = wrap_impl_namespace(w);
+
+            w.write("#pragma region guids\n");
+            w.write_each<write_guid>(members.interfaces);
+            w.write("#pragma endregion guids\n\n");
+
+            w.write("#pragma region abi_interfaces\n");
+            w.write_each<write_interface_abi>(members.interfaces);
+            w.write("#pragma endregion abi_interfaces\n\n");
+
+            w.write("#pragma region consume\n");
+            w.write_each<write_consume>(members.interfaces);
+            w.write("#pragma endregion consume\n\n");
+        }
+        {
+            auto wrap = wrap_type_namespace(w, ns);
+
+            w.write("#pragma region interfaces\n");
+            w.write_each<write_interface>(members.interfaces);
+            w.write("#pragma endregion interfaces\n\n");
 
             w.write("#pragma region structs\n");
             write_structs(w, members.structs);

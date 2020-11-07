@@ -521,7 +521,8 @@ namespace cppwin32
             }
         }
         w.write(R"(
-    };)");
+    };
+)");
     }
 
     void write_delegate_params(writer& w, method_signature const& method_signature)
@@ -702,5 +703,139 @@ namespace cppwin32
             type,
             bind<write_guid_value>(guid_value),
             guid_str);
+    }
+
+    bool should_write_interface(TypeDef const& type)
+    {
+        return type.TypeName() != "IUnknown" && size(type.MethodList()) >= 3;
+    }
+    
+    std::pair<MethodDef, MethodDef> non_inherited_methods(TypeDef const& type)
+    {
+        auto method_list = type.MethodList();
+        XLANG_ASSERT(size(method_list) >= 3);
+        // Skip IUnknown methods
+        method_list.first += 3;
+        return method_list;
+    }
+
+    void write_interface_abi(writer& w, TypeDef const& type)
+    {
+        if (!should_write_interface(type))
+        {
+            return;
+        }
+
+        {
+            auto const format = R"(    template <> struct abi<%>
+    {
+        struct __declspec(novtable) type : unknown_abi
+        {
+)";
+            w.write(format, type);
+        }
+
+        auto const format = R"(            virtual % __stdcall %(%) noexcept = 0;
+)";
+        auto abi_guard = w.push_abi_types(true);
+        
+        for (auto&& method : non_inherited_methods(type))
+        {
+            method_signature signature{ method };
+            w.write(format, bind<write_abi_return>(signature.return_signature()), method.Name(), bind<write_abi_params>(signature));
+        }
+
+        w.write(R"(        };
+    };
+)");
+    }
+
+    void write_consume_params(writer& w, method_signature const& signature)
+    {
+        separator s{ w };
+
+        for (auto&& [param, param_signature] : signature.params())
+        {
+            s();
+
+            w.write("% %", param_signature->Type(), param.Name());
+
+            //if (param.Flags().In())
+            //{
+            //    XLANG_ASSERT(!param.Flags().Out());
+
+            //    auto const param_type = std::get_if<ElementType>(&param_signature->Type().Type());
+
+            //    if (param_type)
+            //    {
+            //        w.write("%", param_signature->Type());
+            //    }
+            //    else
+            //    {
+            //        w.write("% const&", param_signature->Type());
+            //    }
+            //}
+            //else
+            //{
+            //    XLANG_ASSERT(!param.Flags().In());
+            //    XLANG_ASSERT(param.Flags().Out());
+            //    w.write("%&", param_signature->Type());
+            //}
+
+            //w.write(" %", param.Name());
+        }
+    }
+
+    void write_consume_declaration(writer& w, MethodDef const& method)
+    {
+        method_signature const signature{ method };
+        auto const name = method.Name();
+        w.write("        WIN32_IMPL_AUTO(%) %(%) const;\n",
+            signature.return_signature(),
+            name,
+            bind<write_consume_params>(signature));
+    }
+
+    void write_consume(writer& w, TypeDef const& type)
+    {
+        if (!should_write_interface(type))
+        {
+            return;
+        }
+
+        auto const impl_name = get_impl_name(type.TypeNamespace(), type.TypeName());
+
+        auto const format = R"(    struct consume_%
+    {
+%    };
+)";
+
+        w.write(format,
+            impl_name,
+            bind_each<write_consume_declaration>(non_inherited_methods(type)));
+    }
+
+    void write_interface(writer& w, TypeDef const& type)
+    {
+        if (!should_write_interface(type))
+        {
+            return;
+        }
+
+        auto const type_name = type.TypeName();
+
+        auto const format = R"(    struct __declspec(empty_bases) % :
+        Microsoft::Windows::Sdk::IUnknown,
+        _impl_::consume_%
+    {
+        %(std::nullptr_t = nullptr) noexcept {}
+        %(void* ptr, take_ownership_from_abi_t) noexcept : Microsoft::Windows::Sdk::IUnknown(ptr, take_ownership_from_abi) {}
+    };
+)";
+        w.write(format,
+            type_name,
+            get_impl_name(type.TypeNamespace(), type_name),
+            type_name,
+            type_name);
     }
 }

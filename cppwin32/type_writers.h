@@ -15,6 +15,19 @@ namespace cppwin32
         return std::visit(visit_overload<C...>{ std::forward<C>(call)... }, std::forward<V>(variant));
     }
 
+    template <typename First, typename... Rest>
+    auto get_impl_name(First const& first, Rest const&... rest)
+    {
+        std::string result;
+        result.reserve(std::string_view(first).size() + ((1 + std::string_view(rest).size()), ...));
+        ((result += first), (((result += '_') += rest), ...));
+        std::transform(result.begin(), result.end(), result.begin(), [](char c)
+            {
+                return c == '.' ? '_' : c;
+            });
+        return result;
+    }
+
     struct writer : writer_base<writer>
     {
         using writer_base<writer>::write;
@@ -199,6 +212,18 @@ namespace cppwin32
                 {
                     throw std::invalid_argument("Invalid TypeSig type");
                 });
+        }
+
+        void write(RetTypeSig const& value)
+        {
+            if (value)
+            {
+                write(value.Type());
+            }
+            else
+            {
+                write("void");
+            }
         }
 
         void save_header(std::string const& output_folder)
