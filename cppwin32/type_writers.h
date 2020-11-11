@@ -15,6 +15,56 @@ namespace cppwin32
         return std::visit(visit_overload<C...>{ std::forward<C>(call)... }, std::forward<V>(variant));
     }
 
+    struct type_name
+    {
+        std::string_view name;
+        std::string_view name_space;
+
+        explicit type_name(TypeDef const& type) :
+            name(type.TypeName()),
+            name_space(type.TypeNamespace())
+        {
+        }
+
+        explicit type_name(TypeRef const& type) :
+            name(type.TypeName()),
+            name_space(type.TypeNamespace())
+        {
+        }
+
+        explicit type_name(coded_index<TypeDefOrRef> const& type)
+        {
+            auto const& [type_namespace, type_name] = get_type_namespace_and_name(type);
+            name_space = type_namespace;
+            name = type_name;
+        }
+    };
+
+    bool operator==(type_name const& left, type_name const& right)
+    {
+        return left.name == right.name && left.name_space == right.name_space;
+    }
+
+    bool operator==(type_name const& left, std::string_view const& right)
+    {
+        if (left.name.size() + 1 + left.name_space.size() != right.size())
+        {
+            return false;
+        }
+
+        if (right[left.name_space.size()] != '.')
+        {
+            return false;
+        }
+
+        if (0 != right.compare(left.name_space.size() + 1, left.name.size(), left.name))
+        {
+            return false;
+        }
+
+        return 0 == right.compare(0, left.name_space.size(), left.name_space);
+    }
+
     template <typename First, typename... Rest>
     auto get_impl_name(First const& first, Rest const&... rest)
     {
@@ -34,6 +84,7 @@ namespace cppwin32
         std::string type_namespace;
         bool abi_types{};
         bool full_namespace{};
+        bool consume_types{};
 
         template<typename T>
         struct member_value_guard
@@ -63,6 +114,11 @@ namespace cppwin32
         [[nodiscard]] auto push_full_namespace(bool value)
         {
             return member_value_guard(this, &writer::full_namespace, value);
+        }
+
+        [[nodiscard]] auto push_consume_types(bool value)
+        {
+            return member_value_guard(this, &writer::consume_types, value);
         }
 
         void write_value(int32_t value)
@@ -107,11 +163,18 @@ namespace cppwin32
 
         void write(TypeDef const& type)
         {
-            if (full_namespace)
+            if (abi_types && get_category(type) == category::interface_type)
             {
-                write("win32::");
+                write("void");
             }
-            write("@::%", type.TypeNamespace(), type.TypeName());
+            else
+            {
+                if (full_namespace)
+                {
+                    write("win32::");
+                }
+                write("@::%", type.TypeNamespace(), type.TypeName());
+            }
         }
 
         void write(TypeRef const& type)
@@ -205,9 +268,12 @@ namespace cppwin32
                 [&](coded_index<TypeDefOrRef> const& type)
                 {
                     write(type);
-                    for (int i = 0; i < signature.ptr_count(); ++i)
+                    if (!consume_types)
                     {
-                        write('*');
+                        for (int i = 0; i < signature.ptr_count(); ++i)
+                        {
+                            write('*');
+                        }
                     }
                 },
                 [&](auto&& type)

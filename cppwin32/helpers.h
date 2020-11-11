@@ -57,6 +57,22 @@ namespace cppwin32
             return m_signature.ReturnType();
         }
 
+        auto return_param_name() const
+        {
+            std::string_view name;
+
+            if (m_return && !m_return.Name().empty())
+            {
+                name = m_return.Name();
+            }
+            else
+            {
+                name = "win32_impl_result";
+            }
+
+            return name;
+        }
+
         MethodDef const& method() const
         {
             return m_method;
@@ -69,4 +85,78 @@ namespace cppwin32
         std::vector<std::pair<Param, ParamSig const*>> m_params;
         Param m_return;
     };
+
+    enum class param_category
+    {
+        enum_type,
+        struct_type,
+        array_type,
+        fundamental_type,
+        interface_type,
+        delegate_type,
+        generic_type
+    };
+
+    inline param_category get_category(TypeSig const& signature, TypeDef* signature_type = nullptr)
+    {
+        if (signature.is_szarray())
+        {
+            return param_category::array_type;
+        }
+
+        param_category result{};
+
+        call(signature.Type(),
+            [&](ElementType type)
+            {
+                result = param_category::fundamental_type;
+            },
+            [&](coded_index<TypeDefOrRef> const& type)
+            {
+                TypeDef type_def;
+                if (type.type() == TypeDefOrRef::TypeDef)
+                {
+                    type_def = type.TypeDef();
+                }
+                else
+                {
+                    auto type_ref = type.TypeRef();
+                    if (type_name(type_ref) == "System.Guid")
+                    {
+                        result = param_category::struct_type;
+                        return;
+                    }
+                    type_def = find_required(type_ref);
+                }
+
+                if (signature_type)
+                {
+                    *signature_type = type_def;
+                }
+
+                switch (get_category(type_def))
+                {
+                case category::interface_type:
+                    result = param_category::interface_type;
+                    return;
+                case category::enum_type:
+                    result = param_category::enum_type;
+                    return;
+                case category::struct_type:
+                    result = param_category::struct_type;
+                    return;
+                case category::delegate_type:
+                    result = param_category::delegate_type;
+                    return;
+                default:
+                    result = param_category::generic_type;
+                    return;
+                }
+            },
+                [&](auto&&)
+            {
+                result = param_category::generic_type;
+            });
+        return result;
+    }
 }
