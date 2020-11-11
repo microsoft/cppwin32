@@ -185,8 +185,10 @@ namespace cppwin32
                     case ElementType::R8:
                         write("double");
                         break;
-                    case ElementType::I:
                     case ElementType::U:
+                        write("size_t");
+                        break;
+                    case ElementType::I:
                         write("void*");
                         break;
                     case ElementType::Void:
