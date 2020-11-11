@@ -89,5 +89,7 @@ int main(int const argc, char* argv[])
         }
 
         w.save_header(o.output_folder.string());
+
+        std::filesystem::copy_file("base.h", o.output_folder / "base.h", std::filesystem::copy_options::overwrite_existing);
     }
 }

@@ -147,7 +147,10 @@
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
-    <ClInclude Include="base.h" />
+    <ClInclude Include="base.h">
+      <DeploymentContent Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">true</DeploymentContent>
+      <DeploymentContent Condition="'$(Configuration)|$(Platform)'=='Release|x64'">true</DeploymentContent>
+    </ClInclude>
     <ClInclude Include="code_writers.h" />
     <ClInclude Include="helpers.h" />
     <ClInclude Include="text_writer.h" />
