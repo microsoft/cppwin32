@@ -4,6 +4,8 @@
 #include <stddef.h>
 #include <stdint.h>
 #include <string.h>
+#include <string>
+#include <string_view>
 #include <type_traits>
 
 #ifdef _DEBUG

@@ -831,24 +831,37 @@ namespace cppwin32
             bind<write_guid_value>(guid_value),
             guid_str);
     }
-
-    bool should_write_interface(TypeDef const& type)
-    {
-        return type.TypeName() != "IUnknown" && size(type.MethodList()) >= 3;
-    }
     
-    std::pair<MethodDef, MethodDef> non_inherited_methods(TypeDef const& type)
+    std::vector<std::pair<std::string_view, MethodDef>> non_inherited_methods(TypeDef const& type)
     {
-        auto method_list = type.MethodList();
-        XLANG_ASSERT(size(method_list) >= 3);
-        // Skip IUnknown methods
-        method_list.first += 3;
-        return method_list;
+        std::vector<std::pair<std::string_view, MethodDef>> result;
+        auto const& nested_types = type.get_cache().nested_types(type);
+
+        int const methods_to_skip = 3; // Skip IUnknown methods. TODO: Skip base interface methods
+        if (nested_types.size() <= 4)
+        {
+            // The minimum is 3 delegates for the IUnknown methods and 1 for the vtable
+            return result;
+        }
+
+        auto const& vtbl = nested_types.back();
+        XLANG_ASSERT(nested_types.size() - 1 == size(vtbl.FieldList()));
+
+        for (size_t i = methods_to_skip; i < nested_types.size() - 1; ++i)
+        {
+            auto name = nested_types[i].TypeName().substr(1); // Strip leading underscore
+            auto method_list = nested_types[i].MethodList();
+            XLANG_ASSERT(size(method_list) == 4); // .ctor, Invoke, BeginInvoke, EndInvoke
+            result.push_back({ name, method_list.first[1] });
+        }
+
+        return result;
     }
 
     void write_interface_abi(writer& w, TypeDef const& type)
     {
-        if (!should_write_interface(type))
+        auto const& methods = non_inherited_methods(type);
+        if (methods.empty())
         {
             return;
         }
@@ -866,10 +879,11 @@ namespace cppwin32
 )";
         auto abi_guard = w.push_abi_types(true);
         
-        for (auto&& method : non_inherited_methods(type))
+        for (auto&& [name, method] : methods)
         {
             method_signature signature{ method };
-            w.write(format, bind<write_abi_return>(signature.return_signature()), method.Name(), bind<write_abi_params>(signature));
+            signature.params().erase(signature.params().begin());
+            w.write(format, bind<write_abi_return>(signature.return_signature()), name, bind<write_abi_params>(signature));
         }
 
         w.write(R"(        };
@@ -882,10 +896,12 @@ namespace cppwin32
         write_method_params(w, signature);
     }
 
-    void write_consume_declaration(writer& w, MethodDef const& method)
+    void write_consume_declaration(writer& w, std::pair<std::string_view, MethodDef> const& method)
     {
-        method_signature const signature{ method };
-        auto const name = method.Name();
+        method_signature signature{ method.second };
+        signature.params().erase(signature.params().begin());
+
+        auto const name = method.first;
         w.write("        WIN32_IMPL_AUTO(%) %(%) const;\n",
             signature.return_signature(),
             name,
@@ -894,7 +910,8 @@ namespace cppwin32
 
     void write_consume(writer& w, TypeDef const& type)
     {
-        if (!should_write_interface(type))
+        auto const& method_list = non_inherited_methods(type);
+        if (method_list.empty())
         {
             return;
         }
@@ -908,12 +925,12 @@ namespace cppwin32
 
         w.write(format,
             impl_name,
-            bind_each<write_consume_declaration>(non_inherited_methods(type)));
+            bind_each<write_consume_declaration>(method_list));
     }
 
     void write_interface(writer& w, TypeDef const& type)
     {
-        if (!should_write_interface(type))
+        if (non_inherited_methods(type).empty())
         {
             return;
         }

@@ -25,6 +25,11 @@ namespace winmd::reader
                     auto& ns = m_namespaces[type.TypeNamespace()];
                     ns.types.try_emplace(type.TypeName(), type);
                 }
+
+                for (auto&& row : db.NestedClass)
+                {
+                    m_nested_types[row.EnclosingType()].push_back(row.NestedType());
+                }
             }
 
             for (auto&&[namespace_name, members] : m_namespaces)
@@ -161,6 +166,20 @@ namespace winmd::reader
             remove(members.delegates, name);
         }
 
+        std::vector<TypeDef> const& nested_types(TypeDef const& enclosing_type) const
+        {
+            auto it = m_nested_types.find(enclosing_type);
+            if (it != m_nested_types.end())
+            {
+                return it->second;
+            }
+            else
+            {
+                static const std::vector<TypeDef> empty;
+                return empty;
+            }
+        }
+
         struct namespace_members
         {
             std::map<std::string_view, TypeDef> types;
@@ -179,5 +198,6 @@ namespace winmd::reader
 
         std::list<database> m_databases;
         std::map<std::string_view, namespace_members> m_namespaces;
+        std::map<TypeDef, std::vector<TypeDef>> m_nested_types;
     };
 }
