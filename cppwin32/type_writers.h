@@ -252,7 +252,7 @@ namespace cppwin32
                         write("size_t");
                         break;
                     case ElementType::I:
-                        write("void*");
+                        write("intptr_t");
                         break;
                     case ElementType::Void:
                         write("void");
