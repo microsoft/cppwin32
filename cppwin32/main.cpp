@@ -2,6 +2,7 @@
 #include "text_writer.h"
 #include "type_writers.h"
 #include "code_writers.h"
+#include <unordered_set>
 
 using namespace cppwin32;
 
@@ -20,6 +21,8 @@ int main(int const argc, char* argv[])
     std::filesystem::create_directories(o.output_folder);
 
     winmd::reader::cache c{ o.input };
+
+    std::set<std::string_view> raii_helpers;
 
     for (auto const& [ns, members] : c.namespaces())
     {
@@ -79,6 +82,10 @@ int main(int const argc, char* argv[])
         }
         {
             auto wrap = wrap_type_namespace(w, ns);
+
+            w.write("#pragma region raii_helpers\n");
+            w.write_each<write_api_raii_helpers>(members.classes, raii_helpers);
+            w.write("#pragma endregion raii_helpers\n\n");
 
             w.write("#pragma region methods\n");
             w.write_each<write_class>(members.classes);

@@ -3,6 +3,8 @@
 #include "type_writers.h"
 #include "helpers.h"
 
+#include <unordered_set>
+
 namespace cppwin32
 {
     struct finish_with
@@ -950,5 +952,54 @@ namespace cppwin32
             get_impl_name(type.TypeNamespace(), type_name),
             type_name,
             type_name);
+    }
+
+    void write_raii_helper(writer& w, Param const& param, std::set<std::string_view>& helpers)
+    {
+        auto const attr = get_attribute(param, "Microsoft.Windows.Sdk", "RIAAFreeAttribute");
+        if (!attr)
+        {
+            return;
+        }
+        auto const attr_sig = attr.Value();
+        auto const function_name = std::get<std::string_view>(std::get<ElemSig>(attr_sig.FixedArgs()[0].value).value);
+
+        auto const [iter, inserted] = helpers.insert(function_name);
+        if (!inserted)
+        {
+            return;
+        }
+
+        auto const apis = param.get_cache().find_required("Microsoft.Windows.Sdk", "Apis");
+        auto const methods = apis.MethodList();
+        auto const function = std::find_if(methods.first, methods.second,
+            [&function_name](MethodDef const& method)
+            {
+                return method.Name() == function_name;
+            });
+
+        method_signature signature(function);
+
+        w.write("    using unique_% = unique_any<%, decltype(&WIN32_IMPL_%), WIN32_IMPL_%>;\n",
+            function_name,
+            signature.params()[0].second->Type(),
+            function_name,
+            function_name);
+    }
+
+    void write_method_raii_helpers(writer& w, MethodDef const& method, std::set<std::string_view>& helpers)
+    {
+        for (auto&& param : method.ParamList())
+        {
+            write_raii_helper(w, param, helpers);
+        }
+    }
+
+    void write_api_raii_helpers(writer& w, TypeDef const& type, std::set<std::string_view>& helpers)
+    {
+        for (auto&& method : type.MethodList())
+        {
+            write_method_raii_helpers(w, method, helpers);
+        }
     }
 }

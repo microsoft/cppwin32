@@ -145,11 +145,11 @@ namespace cppwin32
         }
 
         template <auto F, typename List, typename... Args>
-        void write_each(List const& list, Args const&... args)
+        void write_each(List const& list, Args&&... args)
         {
             for (auto&& item : list)
             {
-                F(*static_cast<T*>(this), item, args...);
+                F(*static_cast<T*>(this), item, std::forward<Args>(args)...);
             }
         }
 

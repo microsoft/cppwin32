@@ -873,3 +873,254 @@ namespace win32::_impl_
         }
     };
 }
+
+namespace win32::_impl_
+{
+    template <typename pointer_t,
+        typename close_fn_t,
+        close_fn_t close_fn,
+        typename pointer_storage_t = pointer_t,
+        typename invalid_t = pointer_t,
+        invalid_t invalid = invalid_t(),
+        typename pointer_invalid_t = std::nullptr_t>
+        struct resource_policy
+    {
+        using pointer_storage = pointer_storage_t;
+        using pointer = pointer_t;
+        using pointer_invalid = pointer_invalid_t;
+        inline static pointer_storage invalid_value() noexcept { return (pointer)invalid; }
+        inline static bool is_valid(pointer_storage value) noexcept { return static_cast<pointer>(value) != invalid_value(); }
+        inline static void close(pointer_storage value) noexcept { std::invoke(close_fn, value); }
+    };
+
+    template <typename Policy>
+    struct unique_storage
+    {
+    protected:
+        using policy = Policy;
+        using pointer_storage = typename policy::pointer_storage;
+        using pointer = typename policy::pointer;
+        using base_storage = unique_storage<policy>;
+
+        unique_storage() noexcept
+            : m_ptr(policy::invalid_value())
+        {}
+
+        explicit unique_storage(pointer_storage ptr) noexcept
+            : m_ptr(ptr)
+        {}
+
+        unique_storage(unique_storage&& other) noexcept
+            : m_ptr(std::move(other.m_ptr))
+        {
+            other.m_ptr = policy::invalid_value();
+        }
+
+        ~unique_storage() noexcept
+        {
+            if (policy::is_valid(m_ptr))
+            {
+                policy::close(m_ptr);
+            }
+        }
+
+        void replace(unique_storage&& other) noexcept
+        {
+            reset(other.m_ptr);
+            other.m_ptr = policy::invalid_value();
+        }
+
+    public:
+        bool is_valid() const noexcept
+        {
+            return policy::is_valid(m_ptr);
+        }
+
+        void reset(pointer_storage ptr = policy::invalid_value()) noexcept
+        {
+            if (policy::is_valid(m_ptr))
+            {
+                policy::close(m_ptr);
+            }
+            m_ptr = ptr;
+        }
+
+        void reset(std::nullptr_t) noexcept
+        {
+            static_assert(std::is_same_v<typename policy::pointer_invalid, std::nullptr_t>, "reset(nullptr): valid only for handle types using nullptr as the invalid value");
+        }
+
+        pointer get() const noexcept
+        {
+            return static_cast<pointer>(m_ptr);
+        }
+
+        pointer_storage release() noexcept
+        {
+            auto ptr = m_ptr;
+            m_ptr = policy::invalid_value();
+            return ptr;
+        }
+
+        pointer_storage* addressof() noexcept
+        {
+            return &m_ptr;
+        }
+
+    private:
+        pointer_storage m_ptr;
+    };
+}
+
+WIN32_EXPORT namespace win32
+{
+    template <typename storage_t>
+    struct unique_any_t : storage_t
+    {
+        using policy = typename storage_t::policy;
+        using pointer_storage = typename policy::pointer_storage;
+        using pointer = typename policy::pointer;
+
+        unique_any_t(unique_any_t const&) = delete;
+        unique_any_t& operator=(unique_any_t const&) = delete;
+
+        unique_any_t() noexcept = default;
+
+        template <typename Arg1, typename... Args>
+        explicit unique_any_t(Arg1&& arg1, Args&&... args) noexcept
+            : storage_t(std::forward<Arg1>(args), std::forward<Args>(args)...)
+        {}
+
+        explicit unique_any_t(std::nullptr_t) noexcept
+        {
+            static_assert(std::is_same_v<typename policy::pointer_invalid, std::nullptr_t>, "nullptr constructor: valid only for handle types using nullptr as the invalid value");
+        }
+
+        unique_any_t(unique_any_t&& other) noexcept
+            : storage_t(std::move(other))
+        {}
+
+        unique_any_t& operator=(unique_any_t&& other) noexcept
+        {
+            if (this != std::addressof(other))
+            {
+                storage_t::replace(std::move(static_cast<typename storage_t::base_storage&>(other)));
+            }
+            return (*this);
+        }
+
+        unique_any_t& operator=(std::nullptr_t) noexcept
+        {
+            static_assert(std::is_same_v<typename policy::pointer_invalid, std::nullptr_t>, "nullptr assignment: valid only for handle types using nullptr as the invalid value");
+            storage_t::reset();
+            return (*this);
+        }
+
+        void swap(unique_any_t& other) noexcept
+        {
+            unique_any_t self(std::move(*this));
+            operator=(std::move(other));
+            other = std::move(self);
+        }
+
+        explicit operator bool() const noexcept
+        {
+            return storage_t::is_valid();
+        }
+
+        pointer_storage* put() noexcept
+        {
+            storage_t::reset();
+            return storage_t::addressof();
+        }
+
+        pointer_storage* operator&() noexcept
+        {
+            return put();
+        }
+
+        pointer get() const noexcept
+        {
+            return storage_t::get();
+        }
+    };
+
+    template <typename policy>
+    void swap(unique_any_t<policy>& left, unique_any_t<policy>& right) noexcept
+    {
+        left.swap(right);
+    }
+
+    template <typename policy>
+    bool operator==(const unique_any_t<policy>& left, const unique_any_t<policy>& right) noexcept
+    {
+        return (left.get() == right.get());
+    }
+
+    template <typename policy>
+    bool operator==(const unique_any_t<policy>& left, std::nullptr_t) noexcept
+    {
+        static_assert(std::is_same_v<typename unique_any_t<policy>::policy::pointer_invalid, std::nullptr_t>, "the resource class does not use nullptr as an invalid value");
+        return !left;
+    }
+
+    template <typename policy>
+    bool operator==(std::nullptr_t, const unique_any_t<policy>& right) noexcept
+    {
+        static_assert(std::is_same_v<typename unique_any_t<policy>::policy::pointer_invalid, std::nullptr_t>, "the resource class does not use nullptr as an invalid value");
+        return !right;
+    }
+
+    template <typename policy>
+    bool operator!=(const unique_any_t<policy>& left, const unique_any_t<policy>& right) noexcept
+    {
+        return (!(left.get() == right.get()));
+    }
+
+    template <typename policy>
+    bool operator!=(const unique_any_t<policy>& left, std::nullptr_t) noexcept
+    {
+        static_assert(std::is_same_v<typename unique_any_t<policy>::policy::pointer_invalid, std::nullptr_t>, "the resource class does not use nullptr as an invalid value");
+        return !!left;
+    }
+
+    template <typename policy>
+    bool operator!=(std::nullptr_t, const unique_any_t<policy>& right) noexcept
+    {
+        static_assert(std::is_same_v<typename unique_any_t<policy>::policy::pointer_invalid, std::nullptr_t>, "the resource class does not use nullptr as an invalid value");
+        return !!right;
+    }
+
+    template <typename policy>
+    bool operator<(const unique_any_t<policy>& left, const unique_any_t<policy>& right) noexcept
+    {
+        return (left.get() < right.get());
+    }
+
+    template <typename policy>
+    bool operator>=(const unique_any_t<policy>& left, const unique_any_t<policy>& right) noexcept
+    {
+        return (!(left < right));
+    }
+
+    template <typename policy>
+    bool operator>(const unique_any_t<policy>& left, const unique_any_t<policy>& right) noexcept
+    {
+        return (right < left);
+    }
+
+    template <typename policy>
+    bool operator<=(const unique_any_t<policy>& left, const unique_any_t<policy>& right) noexcept
+    {
+        return (!(right < left));
+    }
+
+    template <typename pointer,
+        typename close_fn_t,
+        close_fn_t close_fn,
+        typename pointer_storage = pointer,
+        typename invalid_t = pointer,
+        invalid_t invalid = invalid_t(),
+        typename pointer_invalid = std::nullptr_t>
+        using unique_any = unique_any_t<_impl_::unique_storage<_impl_::resource_policy<pointer, close_fn_t, close_fn, pointer_storage, invalid_t, invalid, pointer_invalid>>>;
+}

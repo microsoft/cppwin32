@@ -73,6 +73,11 @@ namespace cppwin32
             return name;
         }
 
+        auto return_param() const
+        {
+            return m_return;
+        }
+
         MethodDef const& method() const
         {
             return m_method;
