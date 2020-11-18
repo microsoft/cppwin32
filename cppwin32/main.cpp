@@ -47,7 +47,7 @@ int main(int const argc, char* argv[])
             w.write("#pragma endregion delegates\n\n");
         }
         {
-            auto warp = wrap_impl_namespace(w);
+            auto wrap = wrap_impl_namespace(w);
 
             w.write("#pragma region guids\n");
             w.write_each<write_guid>(members.interfaces);
@@ -79,6 +79,7 @@ int main(int const argc, char* argv[])
         }
         {
             auto wrap = wrap_type_namespace(w, ns);
+
             w.write("#pragma region methods\n");
             w.write_each<write_class>(members.classes);
             w.write("#pragma endregion methods\n\n");
