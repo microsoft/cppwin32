@@ -226,7 +226,7 @@ namespace winmd::reader
     {
         using row_base::row_base;
 
-        using constant_type = std::variant<bool, char16_t, int8_t, uint8_t, int16_t, uint16_t, int32_t, uint32_t, int64_t, uint64_t, float, double, std::string_view, std::nullptr_t>;
+        using constant_type = std::variant<bool, char16_t, int8_t, uint8_t, int16_t, uint16_t, int32_t, uint32_t, int64_t, uint64_t, float, double, std::u16string_view, std::nullptr_t>;
 
         auto Type() const
         {

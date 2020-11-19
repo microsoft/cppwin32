@@ -118,6 +118,11 @@ namespace winmd::reader
             }
         }
 
+        std::u16string_view as_u16string_constant() const
+        {
+            return { reinterpret_cast<char16_t const*>(m_first), size() / 2 };
+        }
+
         template <typename T>
         auto as_array(uint32_t const offset, uint32_t const count) const
         {

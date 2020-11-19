@@ -121,14 +121,38 @@ namespace cppwin32
             return member_value_guard(this, &writer::consume_types, value);
         }
 
-        void write_value(int32_t value)
+        template <typename T>
+        void write_value(T value)
         {
-            write_printf("%d", value);
-        }
+            char buffer[128];
+            char* first = buffer;
+            char* last = std::end(buffer);
 
-        void write_value(uint32_t value)
-        {
-            write_printf("%#0x", value);
+            if constexpr (std::numeric_limits<T>::is_integer)
+            {
+                int base = 10;
+                if constexpr (!std::numeric_limits<T>::is_signed)
+                {
+                    *first++ = '0';
+                    *first++ = 'x';
+                    base = 16;
+                }
+                auto end = std::to_chars(first, last, value, base).ptr;
+                write(std::string_view{ buffer, static_cast<size_t>(end - buffer) });
+            }
+            else
+            {
+                static_assert(std::is_same_v<float, T> || std::is_same_v<double, T>);
+                *first++ = '0';
+                *first++ = 'x';
+                auto end = std::to_chars(first, last, value, std::chars_format::hex).ptr;
+                // Put the leading '-' in front of '0x'
+                if (*first == '-')
+                {
+                    std::rotate(buffer, first, first + 1);
+                }
+                write(std::string_view{ buffer, static_cast<size_t>(end - buffer) });
+            }
         }
 
         void write_code(std::string_view const& value)
@@ -146,19 +170,102 @@ namespace cppwin32
             }
         }
 
+        void write(ConstantType type)
+        {
+            switch (type)
+            {
+            case ConstantType::UInt8:
+                write("uint8_t");
+                break;
+            case ConstantType::Int8:
+                write("int8_t");
+                break;
+            case ConstantType::UInt16:
+                write("uint16_t");
+                break;
+            case ConstantType::Int16:
+                write("int16_t");
+                break;
+            case ConstantType::UInt32:
+                write("uint32_t");
+                break;
+            case ConstantType::Int32:
+                write("int32_t");
+                break;
+            case ConstantType::UInt64:
+                write("uint64_t");
+                break;
+            case ConstantType::Int64:
+                write("int64_t");
+                break;
+            case ConstantType::Float32:
+                write("float");
+                break;
+            case ConstantType::Float64:
+                write("double");
+                break;
+            case ConstantType::String:
+                write("wchar_t const*");
+                break;
+            default:
+                throw_invalid("Invalid ConstantType");
+                break;
+            }
+        }
+
         void write(Constant const& value)
         {
             switch (value.Type())
             {
+            case ConstantType::UInt8:
+                write_value(value.ValueUInt8());
+                break;
+            case ConstantType::Int8:
+                write_value(value.ValueInt8());
+                break;
+            case ConstantType::UInt16:
+                write_value(value.ValueUInt16());
+                break;
+            case ConstantType::Int16:
+                write_value(value.ValueInt16());
+                break;
             case ConstantType::Int32:
                 write_value(value.ValueInt32());
                 break;
             case ConstantType::UInt32:
                 write_value(value.ValueUInt32());
                 break;
+            case ConstantType::Int64:
+                write_value(value.ValueInt64());
+                break;
+            case ConstantType::UInt64:
+                write_value(value.ValueUInt64());
+                break;
+            case ConstantType::Float32:
+                write_value(value.ValueFloat32());
+                break;
+            case ConstantType::Float64:
+                write_value(value.ValueFloat64());
+                break;
+            case ConstantType::String:
+                write(R"(L"%")", value.ValueString());
+                break;
             default:
                 throw std::invalid_argument("Unexpected constant type");
             }
+        }
+
+        void write(std::u16string_view const& str)
+        {
+            auto const data = reinterpret_cast<wchar_t const*>(str.data());
+            auto const size = ::WideCharToMultiByte(CP_UTF8, 0, data, static_cast<int32_t>(str.size()), nullptr, 0, nullptr, nullptr);
+            if (size == 0)
+            {
+                return;
+            }
+            std::string result(size, '?');
+            ::WideCharToMultiByte(CP_UTF8, 0, data, static_cast<int32_t>(str.size()), result.data(), size, nullptr, nullptr);
+            write(result);
         }
 
         void write(TypeDef const& type)

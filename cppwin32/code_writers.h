@@ -649,6 +649,20 @@ namespace cppwin32
                 write_class_method(w, signature);
             }
         }
+
+        w.write("\n");
+
+        for (auto&& field : type.FieldList())
+        {
+            if (field.Flags().Literal())
+            {
+                auto const constant = field.Constant();
+                w.write("        static constexpr % % = %;\n",
+                    constant.Type(),
+                    field.Name(),
+                    constant);
+            }
+        }
         w.write(R"(
     };
 )");

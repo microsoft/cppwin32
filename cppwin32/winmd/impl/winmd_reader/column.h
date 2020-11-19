@@ -316,7 +316,7 @@ namespace winmd::reader
     inline auto Constant::ValueString() const
     {
         XLANG_ASSERT(Type() == ConstantType::String);
-        return get_blob(2).as_string();
+        return get_blob(2).as_u16string_constant();
     }
 
     inline auto Constant::ValueClass() const
