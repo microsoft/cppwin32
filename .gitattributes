@@ -3,3 +3,4 @@
 *.png   -text
 *.exe   -text
 *.dll   -text
+*.winmd -text
