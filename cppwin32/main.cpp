@@ -95,6 +95,13 @@ int main(int const argc, char* argv[])
             w.write_each<write_enum_operators>(members.enums);
             w.write("#pragma endregion enum_operators\n\n");
         }
+        {
+            auto wrap = wrap_impl_namespace(w);
+
+            w.write("#pragma region consume_methods\n");
+            w.write_each<write_consume_definitions>(members.interfaces);
+            w.write("#pragma endregion consume_methods\n\n");
+        }
 
         w.save_header(o.output_folder.string());
 

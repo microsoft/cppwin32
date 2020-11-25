@@ -874,14 +874,19 @@ namespace cppwin32
         return result;
     }
 
+    bool is_interface_projected(TypeDef const& type)
+    {
+        return type.TypeName() != "IUnknown" && !is_raw_interface(type);
+    }
+
     void write_interface_abi(writer& w, TypeDef const& type)
     {
-        auto const& methods = non_inherited_methods(type);
-        if (methods.empty())
+        if (!is_interface_projected(type))
         {
             return;
         }
 
+        auto const& methods = non_inherited_methods(type);
         {
             auto const format = R"(    template <> struct abi<%>
     {
@@ -915,7 +920,7 @@ namespace cppwin32
     void write_consume_declaration(writer& w, std::pair<std::string_view, MethodDef> const& method)
     {
         method_signature signature{ method.second };
-        signature.params().erase(signature.params().begin());
+        signature.params().erase(signature.params().begin()); // Remove explicit "this"
 
         auto const name = method.first;
         w.write("        WIN32_IMPL_AUTO(%) %(%) const;\n",
@@ -926,12 +931,11 @@ namespace cppwin32
 
     void write_consume(writer& w, TypeDef const& type)
     {
-        auto const& method_list = non_inherited_methods(type);
-        if (method_list.empty())
+        if (!is_interface_projected(type))
         {
             return;
         }
-
+        auto const& method_list = non_inherited_methods(type);
         auto const impl_name = get_impl_name(type.TypeNamespace(), type.TypeName());
 
         auto const format = R"(    struct consume_%
@@ -946,7 +950,7 @@ namespace cppwin32
 
     void write_interface(writer& w, TypeDef const& type)
     {
-        if (non_inherited_methods(type).empty())
+        if (!is_interface_projected(type))
         {
             return;
         }
@@ -1014,6 +1018,46 @@ namespace cppwin32
         for (auto&& method : type.MethodList())
         {
             write_method_raii_helpers(w, method, helpers);
+        }
+    }
+
+    void write_consume_definition(writer& w, TypeDef const& type, std::pair<std::string_view, MethodDef> const& method, std::string_view const& type_impl_name)
+    {
+        auto const method_name = method.first;
+        auto signature = method_signature(method.second);
+        signature.params().erase(signature.params().begin()); // Remove explicit "this"
+
+        auto const format = R"(    WIN32_IMPL_AUTO(%) consume_%::%(%) const
+    {
+        %WIN32_IMPL_SHIM(%)->%(%);%
+    }
+)";
+
+        w.write(format,
+            signature.return_signature(),
+            type_impl_name,
+            method_name,
+            bind<write_consume_params>(signature),
+            bind<write_consume_return_type>(signature),
+            type,
+            method_name,
+            bind<write_method_args>(signature),
+            bind<write_consume_return_statement>(signature)
+        );
+    }
+
+    void write_consume_definitions(writer& w, TypeDef const& type)
+    {
+        if (!is_interface_projected(type))
+        {
+            return;
+        }
+        auto const& method_list = non_inherited_methods(type);
+
+        auto const impl_name = get_impl_name(type.TypeNamespace(), type.TypeName());
+        for (auto&& method : method_list)
+        {
+            write_consume_definition(w, type, method, impl_name);
         }
     }
 }

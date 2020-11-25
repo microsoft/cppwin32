@@ -22,6 +22,8 @@
 
 #endif
 
+#define WIN32_IMPL_SHIM(...) (*(abi_t<__VA_ARGS__>**)(this))
+
 #ifdef __INTELLISENSE__
 #define WIN32_IMPL_AUTO(...) __VA_ARGS__
 #else

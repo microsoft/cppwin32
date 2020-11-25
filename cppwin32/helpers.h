@@ -98,9 +98,35 @@ namespace cppwin32
         array_type,
         fundamental_type,
         interface_type,
+        raw_interface_type, // not COM
         delegate_type,
         generic_type
     };
+
+    bool is_raw_interface(TypeDef const& type)
+    {
+        auto const& nested_types = type.get_cache().nested_types(type);
+        if (size(nested_types) < 4)
+        {
+            return true;
+        }
+        auto const& vtbl = nested_types.back();
+        auto const field_list = vtbl.FieldList();
+        return field_list.first.Name() != "QueryInterface";
+        //auto attr = get_attribute(type, "Microsoft.Windows.Sdk.Win32.Interop", "NativeInheritanceAttribute");
+        //if (!attr)
+        //{
+        //    return true;
+        //}
+        //auto const signature = attr.Value();
+        //auto const base_name = std::get<std::string_view>(std::get<ElemSig>(signature.FixedArgs()[0].value).value);
+        //if (base_name == "IUnknown")
+        //{
+        //    return false;
+        //}
+        //auto const base_type = type.get_cache().find_required("Microsoft.Windows.Sdk.Win32", base_name);
+        //return is_raw_interface(type);
+    }
 
     inline param_category get_category(TypeSig const& signature, TypeDef* signature_type = nullptr)
     {
@@ -142,7 +168,7 @@ namespace cppwin32
                 switch (get_category(type_def))
                 {
                 case category::interface_type:
-                    result = param_category::interface_type;
+                    result = is_raw_interface(type_def) ? param_category::raw_interface_type : param_category::interface_type;
                     return;
                 case category::enum_type:
                     result = param_category::enum_type;
