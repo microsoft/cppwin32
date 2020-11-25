@@ -149,6 +149,31 @@ namespace winmd::reader
         return false;
     }
 
+    inline bool parse_array(table_base const*, byte_view& data)
+    {
+        auto cursor = data;
+        if (uncompress_enum<ElementType>(cursor) == ElementType::Array)
+        {
+            data = cursor;
+            return true;
+        }
+        return false;
+    }
+
+    inline std::pair<uint32_t, std::vector<uint32_t>> parse_array_sizes(table_base const*, byte_view& data)
+    {
+        uint32_t const rank = uncompress_unsigned(data);
+        uint32_t const num_sizes = uncompress_unsigned(data);
+        std::vector<uint32_t> sizes;
+        sizes.reserve(num_sizes);
+        for (uint32_t i = 0; i < num_sizes; ++i)
+        {
+            auto size = uncompress_unsigned(data);
+            sizes.push_back(size);
+        }
+        return { rank, sizes };
+    }
+
     inline int parse_ptr(table_base const*, byte_view& data)
     {
         auto cursor = data;
@@ -176,11 +201,17 @@ namespace winmd::reader
         using value_type = std::variant<ElementType, coded_index<TypeDefOrRef>, GenericTypeIndex, GenericTypeInstSig, GenericMethodTypeIndex>;
         TypeSig(table_base const* table, byte_view& data)
             : m_is_szarray(parse_szarray(table, data))
+            , m_is_array(parse_array(table, data))
             , m_ptr_count(parse_ptr(table, data))
             , m_cmod(parse_cmods(table, data))
             , m_element_type(parse_element_type(data))
             , m_type(ParseType(table, data))
-        {}
+        {
+            if (m_is_array)
+            {
+                std::tie(m_array_rank, m_array_sizes) = parse_array_sizes(table, data);
+            }
+        }
 
         value_type const& Type() const noexcept
         {
@@ -197,6 +228,21 @@ namespace winmd::reader
             return m_is_szarray;
         }
 
+        bool is_array() const noexcept
+        {
+            return m_is_array;
+        }
+
+        uint32_t array_rank() const noexcept
+        {
+            return m_array_rank;
+        }
+
+        std::vector<uint32_t> const& array_sizes() const noexcept
+        {
+            return m_array_sizes;
+        }
+
         int ptr_count() const noexcept
         {
             return m_ptr_count;
@@ -211,10 +257,13 @@ namespace winmd::reader
 
         static value_type ParseType(table_base const* table, byte_view& data);
         bool m_is_szarray;
+        bool m_is_array;
         int m_ptr_count;
         std::vector<CustomModSig> m_cmod;
         ElementType m_element_type;
         value_type m_type;
+        uint32_t m_array_rank{};
+        std::vector<uint32_t> m_array_sizes;
     };
 
     inline bool is_by_ref(byte_view& data)
