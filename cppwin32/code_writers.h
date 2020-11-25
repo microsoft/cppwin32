@@ -825,14 +825,15 @@ namespace cppwin32
 
     void write_guid(writer& w, TypeDef const& type)
     {
-        if (type.TypeName() == "IUnknown")
+        auto const name = type.TypeName();
+        if (name == "IUnknown")
         {
             return;
         }
         auto attribute = get_attribute(type, "System.Runtime.InteropServices", "GuidAttribute");
         if (!attribute)
         {
-            throw_invalid("'System.Runtime.InteropServices.GuidAttribute' attribute for type '", type.TypeNamespace(), ".", type.TypeName(), "' not found");
+            return;
         }
 
         auto const sig = attribute.Value();
@@ -876,7 +877,7 @@ namespace cppwin32
 
     bool is_interface_projected(TypeDef const& type)
     {
-        return type.TypeName() != "IUnknown" && !is_raw_interface(type);
+        return type.TypeName() != "IUnknown" && !is_raw_interface(type) && get_attribute(type, "System.Runtime.InteropServices", "GuidAttribute");
     }
 
     void write_interface_abi(writer& w, TypeDef const& type)
