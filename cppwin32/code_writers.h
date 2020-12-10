@@ -495,12 +495,6 @@ namespace cppwin32
         {
             if (method.Flags().Access() == MemberAccess::Public)
             {
-#ifdef _DEBUG
-                if (method.Name() == "SHOpenRegStreamA")
-                {
-                    method.Flags();
-                }
-#endif
                 method_signature signature{ method };
                 w.write(format, bind<write_abi_return>(signature.return_signature()), method.Name(), bind<write_abi_params>(signature));
             }
@@ -521,6 +515,12 @@ namespace cppwin32
     
     void write_method_params(writer& w, method_signature const& method_signature)
     {
+#ifdef _DEBUG
+        if (method_signature.method().Name() == "D3D12CreateDevice")
+        {
+            method_signature.method();
+        }
+#endif
         separator s{ w };
         for (auto&& [param, param_signature] : method_signature.params())
         {

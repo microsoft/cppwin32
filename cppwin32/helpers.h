@@ -105,15 +105,15 @@ namespace cppwin32
 
     bool is_raw_interface(TypeDef const& type)
     {
+        if (type.TypeName() == "IUnknown")
+        {
+            return false;
+        }
         for (auto& impl : type.InterfaceImpl())
         {
             auto base = find(impl.Interface());
             if (base)
             {
-                if (base.TypeName() == "IUnknown")
-                {
-                    return false;
-                }
                 if (!is_raw_interface(base))
                 {
                     return false;
