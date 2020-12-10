@@ -46,7 +46,7 @@ int main(int const argc, char* argv[])
             w.write("#pragma endregion forward_declarations\n\n");
 
             w.write("#pragma region delegates\n");
-            w.write_each<write_delegate>(members.delegates);
+            write_delegates(w, members.delegates);
             w.write("#pragma endregion delegates\n\n");
         }
         {

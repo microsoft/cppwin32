@@ -201,6 +201,20 @@ namespace cppwin32
         w.write(format, type.TypeName(), bind_each<write_struct_field>(s.fields));
     }
 
+    MethodDef get_delegate_method(TypeDef const& type)
+    {
+        MethodDef invoke;
+        for (auto&& method : type.MethodList())
+        {
+            if (method.Name() == "Invoke")
+            {
+                invoke = method;
+                break;
+            }
+        }
+        return invoke;
+    }
+
     struct dependency_sorter
     {
         struct node
@@ -222,7 +236,7 @@ namespace cppwin32
         std::map<TypeDef, node> dependency_map;
         using value_type = std::map<TypeDef, node>::value_type;
 
-        void add(TypeDef const& type)
+        void add_struct(TypeDef const& type)
         {
             auto [it, inserted] = dependency_map.insert({ type, {} });
             if (!inserted) return;
@@ -237,10 +251,41 @@ namespace cppwin32
                         if (field_type_def && get_category(field_type_def) != category::enum_type)
                         {
                             it->second.add_edge(field_type_def);
-                            add(field_type_def);
+                            add_struct(field_type_def);
                         }
                     }
                 }
+            }
+        }
+
+        void add_delegate(TypeDef const& type)
+        {
+#ifdef _DEBUG
+            if (type.TypeName() == "ACQUIRE_CREDENTIALS_HANDLE_FN_W")
+            {
+                type.TypeNamespace();
+            }
+#endif
+            auto [it, inserted] = dependency_map.insert({ type, {} });
+            if (!inserted) return;
+            method_signature method_signature{ get_delegate_method(type) };
+            auto add_param = [this, current = it](TypeSig const& type)
+            {
+                auto index = std::get_if<coded_index<TypeDefOrRef>>(&type.Type());
+                if (index)
+                {
+                    auto param_type_def = find(*index);
+                    if (param_type_def && get_category(param_type_def) == category::delegate_type)
+                    {
+                        current->second.add_edge(param_type_def);
+                        add_delegate(param_type_def);
+                    }
+                }
+            };
+            add_param(method_signature.return_signature().Type());
+            for (auto const& [param, param_sig] : method_signature.params())
+            {
+                add_param(param_sig->Type());
             }
         }
 
@@ -287,7 +332,7 @@ namespace cppwin32
         dependency_sorter ds;
         for (auto&& type : structs)
         {
-            ds.add(type);
+            ds.add_struct(type);
         }
         
         auto sorted_structs = ds.sort();
@@ -727,18 +772,27 @@ namespace cppwin32
     {
         auto const format = R"xyz(    using % = std::add_pointer_t<% __stdcall(%)>;
 )xyz";
-        MethodDef invoke;
-        for (auto&& method : type.MethodList())
-        {
-            if (method.Name() == "Invoke")
-            {
-                invoke = method;
-                break;
-            }
-        }
-        method_signature method_signature{ invoke };
+        method_signature method_signature{ get_delegate_method(type) };
 
         w.write(format, type.TypeName(), bind<write_method_return>(method_signature), bind<write_delegate_params>(method_signature));
+    }
+
+    void write_delegates(writer& w, std::vector<TypeDef> const& delegates)
+    {
+        dependency_sorter ds;
+        for (auto&& type : delegates)
+        {
+            ds.add_delegate(type);
+        }
+
+        auto sorted_delegates = ds.sort();
+        for (auto&& type : sorted_delegates)
+        {
+            if (get_category(type) == category::delegate_type)
+            {
+                write_delegate(w, type);
+            }
+        }
     }
 
     void write_enum_operators(writer& w, TypeDef const& type)
