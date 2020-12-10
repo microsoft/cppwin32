@@ -105,27 +105,27 @@ namespace cppwin32
 
     bool is_raw_interface(TypeDef const& type)
     {
-        auto const& nested_types = type.get_cache().nested_types(type);
-        if (size(nested_types) < 4)
-        {
-            return true;
-        }
-        auto const& vtbl = nested_types.back();
-        auto const field_list = vtbl.FieldList();
-        return field_list.first.Name() != "QueryInterface";
-        //auto attr = get_attribute(type, "Microsoft.Windows.Sdk.Win32.Interop", "NativeInheritanceAttribute");
-        //if (!attr)
+        //auto const& nested_types = type.get_cache().nested_types(type);
+        //if (size(nested_types) < 4)
         //{
         //    return true;
         //}
-        //auto const signature = attr.Value();
-        //auto const base_name = std::get<std::string_view>(std::get<ElemSig>(signature.FixedArgs()[0].value).value);
-        //if (base_name == "IUnknown")
-        //{
-        //    return false;
-        //}
-        //auto const base_type = type.get_cache().find_required("Microsoft.Windows.Sdk.Win32", base_name);
-        //return is_raw_interface(type);
+        //auto const& vtbl = nested_types.back();
+        //auto const field_list = vtbl.FieldList();
+        //return field_list.first.Name() != "QueryInterface";
+        auto attr = get_attribute(type, "Microsoft.Windows.Sdk.Win32.Interop", "NativeInheritanceAttribute");
+        if (!attr)
+        {
+            return true;
+        }
+        auto const signature = attr.Value();
+        auto const base_name = std::get<std::string_view>(std::get<ElemSig>(signature.FixedArgs()[0].value).value);
+        if (base_name == "IUnknown")
+        {
+            return false;
+        }
+        auto const base_type = type.get_cache().find_required("Microsoft.Windows.Sdk.Win32", base_name);
+        return is_raw_interface(base_type);
     }
 
     inline param_category get_category(TypeSig const& signature, TypeDef* signature_type = nullptr)

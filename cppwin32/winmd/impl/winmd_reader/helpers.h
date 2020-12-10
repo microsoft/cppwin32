@@ -15,12 +15,69 @@ namespace winmd::reader
 
     inline auto find(TypeRef const& type)
     {
-        return type.get_database().get_cache().find(type.TypeNamespace(), type.TypeName());
+        if (type.ResolutionScope().type() != ResolutionScope::TypeRef)
+        {
+            return type.get_database().get_cache().find(type.TypeNamespace(), type.TypeName());
+        }
+        else
+        {
+            auto enclosing_type = find(type.ResolutionScope().TypeRef());
+            if (!enclosing_type)
+            {
+                return TypeDef{};
+            }
+            auto const& nested_types = enclosing_type.get_cache().nested_types(enclosing_type);
+            auto iter = std::find_if(nested_types.begin(), nested_types.end(),
+                [name = type.TypeName()](TypeDef const& arg)
+            {
+                return name == arg.TypeName();
+            });
+            if (iter == nested_types.end())
+            {
+                return TypeDef{};
+            }
+            return *iter;
+        }
     }
 
     inline auto find_required(TypeRef const& type)
     {
-        return type.get_database().get_cache().find_required(type.TypeNamespace(), type.TypeName());
+        if (type.ResolutionScope().type() != ResolutionScope::TypeRef)
+        {
+            return type.get_database().get_cache().find_required(type.TypeNamespace(), type.TypeName());
+        }
+        else
+        {
+            auto enclosing_type = find_required(type.ResolutionScope().TypeRef());
+            auto const& nested_types = enclosing_type.get_cache().nested_types(enclosing_type);
+            auto iter = std::find_if(nested_types.begin(), nested_types.end(),
+                [name = type.TypeName()](TypeDef const& arg)
+            {
+                return name == arg.TypeName();
+            });
+            if (iter == nested_types.end())
+            {
+                impl::throw_invalid("Type '", enclosing_type.TypeName(), ".", type.TypeName(), "' could not be found");
+            }
+            return *iter;
+        }
+    }
+
+    inline TypeDef find(coded_index<TypeDefOrRef> const& type)
+    {
+        if (type.type() == TypeDefOrRef::TypeRef)
+        {
+            return find(type.TypeRef());
+        }
+        else if (type.type() == TypeDefOrRef::TypeDef)
+        {
+            return type.TypeDef();
+        }
+        else
+        {
+            XLANG_ASSERT(false);
+            return {};
+        }
     }
 
     inline TypeDef find_required(coded_index<TypeDefOrRef> const& type)

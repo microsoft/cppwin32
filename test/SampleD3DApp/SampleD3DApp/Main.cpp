@@ -1,6 +1,6 @@
-#include "../../../Generated Files/Microsoft.Windows.Sdk.h"
+#include "pch.h"
 
-using namespace win32::Microsoft::Windows::Sdk;
+using namespace win32::Microsoft::Windows::Sdk::Win32;
 
 intptr_t __stdcall WindowProc(intptr_t hwnd, uint32_t message, size_t wParam, intptr_t lParam);
 

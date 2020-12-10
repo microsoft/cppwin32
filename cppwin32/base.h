@@ -118,7 +118,7 @@ WIN32_EXPORT namespace win32
     }
 }
 
-WIN32_EXPORT namespace win32::Microsoft::Windows::Sdk
+WIN32_EXPORT namespace win32::Microsoft::Windows::Sdk::Win32
 {
     struct IUnknown;
 }
@@ -193,7 +193,7 @@ namespace win32::_impl_
     template <typename T>
     T empty_value() noexcept
     {
-        if constexpr (std::is_base_of_v<Microsoft::Windows::Sdk::IUnknown, T>)
+        if constexpr (std::is_base_of_v<Microsoft::Windows::Sdk::Win32::IUnknown, T>)
         {
             return nullptr;
         }
@@ -210,7 +210,7 @@ namespace win32::_impl_
     struct produce;
 
     template <typename D>
-    struct produce<D, Microsoft::Windows::Sdk::IUnknown> : produce_base<D, Microsoft::Windows::Sdk::IUnknown>
+    struct produce<D, Microsoft::Windows::Sdk::Win32::IUnknown> : produce_base<D, Microsoft::Windows::Sdk::Win32::IUnknown>
     {
     };
 
@@ -253,7 +253,7 @@ WIN32_EXPORT namespace win32
 
 namespace win32::_impl_
 {
-    template <> struct abi<Microsoft::Windows::Sdk::IUnknown>
+    template <> struct abi<Microsoft::Windows::Sdk::Win32::IUnknown>
     {
         struct __declspec(novtable) type
         {
@@ -263,15 +263,15 @@ namespace win32::_impl_
         };
     };
 
-    using unknown_abi = abi_t<Microsoft::Windows::Sdk::IUnknown>;
+    using unknown_abi = abi_t<Microsoft::Windows::Sdk::Win32::IUnknown>;
 
-    template <> inline constexpr guid guid_v<Microsoft::Windows::Sdk::IUnknown>{ 0x00000000, 0x0000, 0x0000, { 0xC0,0x00,0x00,0x00,0x00,0x00,0x00,0x46 } };
+    template <> inline constexpr guid guid_v<Microsoft::Windows::Sdk::Win32::IUnknown>{ 0x00000000, 0x0000, 0x0000, { 0xC0,0x00,0x00,0x00,0x00,0x00,0x00,0x46 } };
 }
 
 namespace win32::_impl_
 {
     template <typename T>
-    using com_ref = std::conditional_t<std::is_base_of_v<Microsoft::Windows::Sdk::IUnknown, T>, T, com_ptr<T>>;
+    using com_ref = std::conditional_t<std::is_base_of_v<Microsoft::Windows::Sdk::Win32::IUnknown, T>, T, com_ptr<T>>;
 
     template <typename T, std::enable_if_t<is_implements_v<T>, int> = 0>
     com_ref<T> wrap_as_result(void* result)
@@ -287,10 +287,10 @@ namespace win32::_impl_
 
 #ifdef WIN32_IMPL_IUNKNOWN_DEFINED
     template <typename T>
-    struct is_com_interface : std::disjunction<std::is_base_of<Microsoft::Windows::Sdk::IUnknown, T>, std::is_base_of<unknown_abi, T>, is_implements<T>, std::is_base_of<::IUnknown, T>> {};
+    struct is_com_interface : std::disjunction<std::is_base_of<Microsoft::Windows::Sdk::Win32::IUnknown, T>, std::is_base_of<unknown_abi, T>, is_implements<T>, std::is_base_of<::IUnknown, T>> {};
 #else
     template <typename T>
-    struct is_com_interface : std::disjunction<std::is_base_of<Microsoft::Windows::Sdk::IUnknown, T>, std::is_base_of<unknown_abi, T>, is_implements<T>> {};
+    struct is_com_interface : std::disjunction<std::is_base_of<Microsoft::Windows::Sdk::Win32::IUnknown, T>, std::is_base_of<unknown_abi, T>, is_implements<T>> {};
 #endif
 
     template <typename T>
@@ -332,7 +332,7 @@ namespace win32::_impl_
 }
 
 
-WIN32_EXPORT namespace win32::Microsoft::Windows::Sdk
+WIN32_EXPORT namespace win32::Microsoft::Windows::Sdk::Win32
 {
     struct IUnknown
     {
@@ -465,13 +465,13 @@ WIN32_EXPORT namespace win32::Microsoft::Windows::Sdk
 
 WIN32_EXPORT namespace win32
 {
-    template <typename T, std::enable_if_t<!std::is_base_of_v<Microsoft::Windows::Sdk::IUnknown, T>, int> = 0>
+    template <typename T, std::enable_if_t<!std::is_base_of_v<Microsoft::Windows::Sdk::Win32::IUnknown, T>, int> = 0>
     auto get_abi(T const& object) noexcept
     {
         return reinterpret_cast<_impl_::abi_t<T> const&>(object);
     }
 
-    template <typename T, std::enable_if_t<!std::is_base_of_v<Microsoft::Windows::Sdk::IUnknown, T>, int> = 0>
+    template <typename T, std::enable_if_t<!std::is_base_of_v<Microsoft::Windows::Sdk::Win32::IUnknown, T>, int> = 0>
     auto put_abi(T& object) noexcept
     {
         if constexpr (!std::is_trivially_destructible_v<T>)
@@ -482,19 +482,19 @@ WIN32_EXPORT namespace win32
         return reinterpret_cast<_impl_::abi_t<T>*>(&object);
     }
 
-    template <typename T, typename V, std::enable_if_t<!std::is_base_of_v<Microsoft::Windows::Sdk::IUnknown, T>, int> = 0>
+    template <typename T, typename V, std::enable_if_t<!std::is_base_of_v<Microsoft::Windows::Sdk::Win32::IUnknown, T>, int> = 0>
     void copy_from_abi(T& object, V&& value)
     {
         object = reinterpret_cast<T const&>(value);
     }
 
-    template <typename T, typename V, std::enable_if_t<!std::is_base_of_v<Microsoft::Windows::Sdk::IUnknown, T>, int> = 0>
+    template <typename T, typename V, std::enable_if_t<!std::is_base_of_v<Microsoft::Windows::Sdk::Win32::IUnknown, T>, int> = 0>
     void copy_to_abi(T const& object, V& value)
     {
         reinterpret_cast<T&>(value) = object;
     }
 
-    template <typename T, std::enable_if_t<!std::is_base_of_v<Microsoft::Windows::Sdk::IUnknown, std::decay_t<T>> && !std::is_convertible_v<T, std::wstring_view>, int> = 0>
+    template <typename T, std::enable_if_t<!std::is_base_of_v<Microsoft::Windows::Sdk::Win32::IUnknown, std::decay_t<T>> && !std::is_convertible_v<T, std::wstring_view>, int> = 0>
     auto detach_abi(T&& object)
     {
         _impl_::abi_t<T> result{};
@@ -502,31 +502,31 @@ WIN32_EXPORT namespace win32
         return result;
     }
 
-    inline void* get_abi(Microsoft::Windows::Sdk::IUnknown const& object) noexcept
+    inline void* get_abi(Microsoft::Windows::Sdk::Win32::IUnknown const& object) noexcept
     {
         return *(void**)(&object);
     }
 
-    inline void** put_abi(Microsoft::Windows::Sdk::IUnknown& object) noexcept
+    inline void** put_abi(Microsoft::Windows::Sdk::Win32::IUnknown& object) noexcept
     {
         object = nullptr;
         return reinterpret_cast<void**>(&object);
     }
 
-    inline void attach_abi(Microsoft::Windows::Sdk::IUnknown& object, void* value) noexcept
+    inline void attach_abi(Microsoft::Windows::Sdk::Win32::IUnknown& object, void* value) noexcept
     {
         object = nullptr;
         *put_abi(object) = value;
     }
 
-    inline void* detach_abi(Microsoft::Windows::Sdk::IUnknown& object) noexcept
+    inline void* detach_abi(Microsoft::Windows::Sdk::Win32::IUnknown& object) noexcept
     {
         void* temp = get_abi(object);
         *reinterpret_cast<void**>(&object) = nullptr;
         return temp;
     }
 
-    inline void* detach_abi(Microsoft::Windows::Sdk::IUnknown&& object) noexcept
+    inline void* detach_abi(Microsoft::Windows::Sdk::Win32::IUnknown&& object) noexcept
     {
         void* temp = get_abi(object);
         *reinterpret_cast<void**>(&object) = nullptr;
@@ -538,7 +538,7 @@ WIN32_EXPORT namespace win32
         return nullptr;
     }
 
-    inline void copy_from_abi(Microsoft::Windows::Sdk::IUnknown& object, void* value) noexcept
+    inline void copy_from_abi(Microsoft::Windows::Sdk::Win32::IUnknown& object, void* value) noexcept
     {
         object = nullptr;
 
@@ -549,7 +549,7 @@ WIN32_EXPORT namespace win32
         }
     }
 
-    inline void copy_to_abi(Microsoft::Windows::Sdk::IUnknown const& object, void*& value) noexcept
+    inline void copy_to_abi(Microsoft::Windows::Sdk::Win32::IUnknown const& object, void*& value) noexcept
     {
         WIN32_ASSERT(value == nullptr);
         value = get_abi(object);
@@ -562,7 +562,7 @@ WIN32_EXPORT namespace win32
 
 #ifdef WIN32_IMPL_IUNKNOWN_DEFINED
 
-    inline ::IUnknown* get_unknown(Microsoft::Windows::Sdk::IUnknown const& object) noexcept
+    inline ::IUnknown* get_unknown(Microsoft::Windows::Sdk::Win32::IUnknown const& object) noexcept
     {
         return static_cast<::IUnknown*>(get_abi(object));
     }
@@ -570,7 +570,7 @@ WIN32_EXPORT namespace win32
 #endif
 }
 
-WIN32_EXPORT namespace win32::Microsoft::Windows::Sdk
+WIN32_EXPORT namespace win32::Microsoft::Windows::Sdk::Win32
 {
     inline bool operator==(IUnknown const& left, IUnknown const& right) noexcept
     {

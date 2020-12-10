@@ -113,9 +113,19 @@ namespace cppwin32
     {
         auto index = std::get_if<coded_index<TypeDefOrRef>>(&type.Type());
         TypeDef result{};
-        if (index && index->type() == TypeDefOrRef::TypeDef && index->TypeDef().EnclosingType())
+        if (index)
         {
-            result = index->TypeDef();
+            if (index->type() == TypeDefOrRef::TypeDef)
+            {
+                if (index->TypeDef().EnclosingType())
+                {
+                    result = index->TypeDef();
+                }
+            }
+            else if (index->TypeRef().ResolutionScope().type() == ResolutionScope::TypeRef)
+            {
+                result = find(index->TypeRef());
+            }
         }
         return result;
     }
@@ -127,10 +137,6 @@ namespace cppwin32
 %    };
 )";
         auto const name = type.TypeName();
-        if (name == "BOOT_AREA_INFO")
-        {
-            std::string temp = name.data();
-        }
         struct complex_struct
         {
             complex_struct(writer& w, TypeDef const& type)
@@ -176,6 +182,11 @@ namespace cppwin32
                         }
                         continue;
                     }
+                    auto const index = std::get_if<coded_index<TypeDefOrRef>>(&field_type.Type());
+                    if (index && !find(*index))
+                    {
+                        continue;
+                    }
                     
                     fields.push_back({ name, w.write_temp("%", field_type), array_count });
                 }
@@ -215,6 +226,10 @@ namespace cppwin32
         {
 #ifdef _DEBUG
             auto type_name = type.TypeName();
+            if (type_name == "D3D11_TEXTURE2D_DESC")
+            {
+                type_name.data();
+            }
 #endif
             auto [it, inserted] = dependency_map.insert({ type, {} });
             if (!inserted) return;
@@ -228,14 +243,11 @@ namespace cppwin32
                 {
                     if (auto const field_type = std::get_if<coded_index<TypeDefOrRef>>(&signature.Type().Type()))
                     {
-                        if (field_type->type() == TypeDefOrRef::TypeDef)
+                        auto field_type_def = find(*field_type);
+                        if (field_type_def && get_category(field_type_def) != category::enum_type)
                         {
-                            auto field_type_def = field_type->TypeDef();
-                            if (get_category(field_type_def) != category::enum_type)
-                            {
-                                it->second.add_edge(field_type_def);
-                                add(field_type_def);
-                            }
+                            it->second.add_edge(field_type_def);
+                            add(field_type_def);
                         }
                     }
                 }
@@ -289,7 +301,13 @@ namespace cppwin32
         }
         
         auto sorted_structs = ds.sort();
-        w.write_each<write_struct>(sorted_structs);
+        for (auto&& type : sorted_structs)
+        {
+            if (get_category(type) == category::struct_type)
+            {
+                write_struct(w, type);
+            }
+        }
     }
 
     void write_abi_params(writer& w, method_signature const& method_signature)
@@ -882,6 +900,7 @@ namespace cppwin32
 
     void write_interface_abi(writer& w, TypeDef const& type)
     {
+        // DEBUG
         if (!is_interface_projected(type))
         {
             return;
@@ -959,11 +978,11 @@ namespace cppwin32
         auto const type_name = type.TypeName();
 
         auto const format = R"(    struct __declspec(empty_bases) % :
-        Microsoft::Windows::Sdk::IUnknown,
+        Microsoft::Windows::Sdk::Win32::IUnknown,
         _impl_::consume_%
     {
         %(std::nullptr_t = nullptr) noexcept {}
-        %(void* ptr, take_ownership_from_abi_t) noexcept : Microsoft::Windows::Sdk::IUnknown(ptr, take_ownership_from_abi) {}
+        %(void* ptr, take_ownership_from_abi_t) noexcept : Microsoft::Windows::Sdk::Win32::IUnknown(ptr, take_ownership_from_abi) {}
     };
 )";
         w.write(format,
@@ -975,7 +994,7 @@ namespace cppwin32
 
     void write_raii_helper(writer& w, Param const& param, std::set<std::string_view>& helpers)
     {
-        auto const attr = get_attribute(param, "Microsoft.Windows.Sdk", "RIAAFreeAttribute");
+        auto const attr = get_attribute(param, "Microsoft.Windows.Sdk.Win32.Interop", "RIAAFreeAttribute");
         if (!attr)
         {
             return;
@@ -989,7 +1008,7 @@ namespace cppwin32
             return;
         }
 
-        auto const apis = param.get_cache().find_required("Microsoft.Windows.Sdk", "Apis");
+        auto const apis = param.get_cache().find_required("Microsoft.Windows.Sdk.Win32", "Apis");
         auto const methods = apis.MethodList();
         auto const function = std::find_if(methods.first, methods.second,
             [&function_name](MethodDef const& method)
