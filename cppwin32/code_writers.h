@@ -260,12 +260,6 @@ namespace cppwin32
 
         void add_delegate(TypeDef const& type)
         {
-#ifdef _DEBUG
-            if (type.TypeName() == "ACQUIRE_CREDENTIALS_HANDLE_FN_W")
-            {
-                type.TypeNamespace();
-            }
-#endif
             auto [it, inserted] = dependency_map.insert({ type, {} });
             if (!inserted) return;
             method_signature method_signature{ get_delegate_method(type) };
@@ -501,6 +495,12 @@ namespace cppwin32
         {
             if (method.Flags().Access() == MemberAccess::Public)
             {
+#ifdef _DEBUG
+                if (method.Name() == "SHOpenRegStreamA")
+                {
+                    method.Flags();
+                }
+#endif
                 method_signature signature{ method };
                 w.write(format, bind<write_abi_return>(signature.return_signature()), method.Name(), bind<write_abi_params>(signature));
             }
@@ -944,13 +944,11 @@ namespace cppwin32
 
     void write_interface_abi(writer& w, TypeDef const& type)
     {
-        // DEBUG
         if (!is_interface_projected(type))
         {
             return;
         }
 
-        auto const& methods = non_inherited_methods(type);
         {
             auto const format = R"(    template <> struct abi<%>
     {
@@ -964,11 +962,10 @@ namespace cppwin32
 )";
         auto abi_guard = w.push_abi_types(true);
         
-        for (auto&& [name, method] : methods)
+        for (auto&& method : type.MethodList())
         {
             method_signature signature{ method };
-            signature.params().erase(signature.params().begin());
-            w.write(format, bind<write_abi_return>(signature.return_signature()), name, bind<write_abi_params>(signature));
+            w.write(format, bind<write_abi_return>(signature.return_signature()), method.Name(), bind<write_abi_params>(signature));
         }
 
         w.write(R"(        };
@@ -981,12 +978,11 @@ namespace cppwin32
         write_method_params(w, signature);
     }
 
-    void write_consume_declaration(writer& w, std::pair<std::string_view, MethodDef> const& method)
+    void write_consume_declaration(writer& w, MethodDef const& method)
     {
-        method_signature signature{ method.second };
-        signature.params().erase(signature.params().begin()); // Remove explicit "this"
+        method_signature signature{ method };
 
-        auto const name = method.first;
+        auto const name = method.Name();
         w.write("        WIN32_IMPL_AUTO(%) %(%) const;\n",
             signature.return_signature(),
             name,
@@ -999,7 +995,7 @@ namespace cppwin32
         {
             return;
         }
-        auto const& method_list = non_inherited_methods(type);
+        auto const& method_list = type.MethodList();
         auto const impl_name = get_impl_name(type.TypeNamespace(), type.TypeName());
 
         auto const format = R"(    struct consume_%
@@ -1085,11 +1081,10 @@ namespace cppwin32
         }
     }
 
-    void write_consume_definition(writer& w, TypeDef const& type, std::pair<std::string_view, MethodDef> const& method, std::string_view const& type_impl_name)
+    void write_consume_definition(writer& w, TypeDef const& type, MethodDef const& method, std::string_view const& type_impl_name)
     {
-        auto const method_name = method.first;
-        auto signature = method_signature(method.second);
-        signature.params().erase(signature.params().begin()); // Remove explicit "this"
+        auto const method_name = method.Name();
+        auto signature = method_signature(method);
 
         auto const format = R"(    WIN32_IMPL_AUTO(%) consume_%::%(%) const
     {
@@ -1116,10 +1111,9 @@ namespace cppwin32
         {
             return;
         }
-        auto const& method_list = non_inherited_methods(type);
 
         auto const impl_name = get_impl_name(type.TypeNamespace(), type.TypeName());
-        for (auto&& method : method_list)
+        for (auto&& method : type.MethodList())
         {
             write_consume_definition(w, type, method, impl_name);
         }

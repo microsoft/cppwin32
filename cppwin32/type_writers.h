@@ -272,7 +272,7 @@ namespace cppwin32
         {
             if (abi_types && get_category(type) == category::interface_type)
             {
-                write("void");
+                write("void*");
             }
             else
             {
@@ -289,15 +289,22 @@ namespace cppwin32
             if (type.TypeNamespace() == "System" && type.TypeName() == "Guid")
             {
                 write("::win32::guid");
+                return;
             }
-            else
+            if (abi_types)
             {
-                if (full_namespace)
+                auto type_def = find(type);
+                if (type_def)
                 {
-                    write("win32::");
+                    write(type_def);
+                    return;
                 }
-                write("@::%", type.TypeNamespace(), type.TypeName());
             }
+            if (full_namespace)
+            {
+                write("win32::");
+            }
+            write("@::%", type.TypeNamespace(), type.TypeName());
         }
 
         void write(coded_index<TypeDefOrRef> const& type)
