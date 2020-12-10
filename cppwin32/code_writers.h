@@ -224,20 +224,10 @@ namespace cppwin32
 
         void add(TypeDef const& type)
         {
-#ifdef _DEBUG
-            auto type_name = type.TypeName();
-            if (type_name == "D3D11_TEXTURE2D_DESC")
-            {
-                type_name.data();
-            }
-#endif
             auto [it, inserted] = dependency_map.insert({ type, {} });
             if (!inserted) return;
             for (auto&& field : type.FieldList())
             {
-#ifdef _DEBUG
-                auto field_name = field.Name();
-#endif
                 auto const signature = field.Signature();
                 if (signature.Type().ptr_count() == 0)
                 {
@@ -978,11 +968,11 @@ namespace cppwin32
         auto const type_name = type.TypeName();
 
         auto const format = R"(    struct __declspec(empty_bases) % :
-        Microsoft::Windows::Sdk::Win32::IUnknown,
+        Windows::Win32::IUnknown,
         _impl_::consume_%
     {
         %(std::nullptr_t = nullptr) noexcept {}
-        %(void* ptr, take_ownership_from_abi_t) noexcept : Microsoft::Windows::Sdk::Win32::IUnknown(ptr, take_ownership_from_abi) {}
+        %(void* ptr, take_ownership_from_abi_t) noexcept : Windows::Win32::IUnknown(ptr, take_ownership_from_abi) {}
     };
 )";
         w.write(format,
@@ -994,7 +984,7 @@ namespace cppwin32
 
     void write_raii_helper(writer& w, Param const& param, std::set<std::string_view>& helpers)
     {
-        auto const attr = get_attribute(param, "Microsoft.Windows.Sdk.Win32.Interop", "RIAAFreeAttribute");
+        auto const attr = get_attribute(param, "Windows.Win32.Interop", "RAIIFreeAttribute");
         if (!attr)
         {
             return;
@@ -1008,7 +998,7 @@ namespace cppwin32
             return;
         }
 
-        auto const apis = param.get_cache().find_required("Microsoft.Windows.Sdk.Win32", "Apis");
+        auto const apis = param.get_cache().find_required("Windows.Win32", "Apis");
         auto const methods = apis.MethodList();
         auto const function = std::find_if(methods.first, methods.second,
             [&function_name](MethodDef const& method)
