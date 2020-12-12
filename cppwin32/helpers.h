@@ -4,23 +4,65 @@
 
 namespace cppwin32
 {
-    struct separator
-    {
-        writer& w;
-        bool first{ true };
+    using namespace winmd::reader;
 
-        void operator()()
+    template <typename...T> struct visit_overload : T... { using T::operator()...; };
+
+    template <typename V, typename...C>
+    auto call(V&& variant, C&&...call)
+    {
+        return std::visit(visit_overload<C...>{ std::forward<C>(call)... }, std::forward<V>(variant));
+    }
+
+    struct type_name
+    {
+        std::string_view name;
+        std::string_view name_space;
+
+        explicit type_name(TypeDef const& type) :
+            name(type.TypeName()),
+            name_space(type.TypeNamespace())
         {
-            if (first)
-            {
-                first = false;
-            }
-            else
-            {
-                w.write(", ");
-            }
+        }
+
+        explicit type_name(TypeRef const& type) :
+            name(type.TypeName()),
+            name_space(type.TypeNamespace())
+        {
+        }
+
+        explicit type_name(coded_index<TypeDefOrRef> const& type)
+        {
+            auto const& [type_namespace, type_name] = get_type_namespace_and_name(type);
+            name_space = type_namespace;
+            name = type_name;
         }
     };
+
+    bool operator==(type_name const& left, type_name const& right)
+    {
+        return left.name == right.name && left.name_space == right.name_space;
+    }
+
+    bool operator==(type_name const& left, std::string_view const& right)
+    {
+        if (left.name.size() + 1 + left.name_space.size() != right.size())
+        {
+            return false;
+        }
+
+        if (right[left.name_space.size()] != '.')
+        {
+            return false;
+        }
+
+        if (0 != right.compare(left.name_space.size() + 1, left.name.size(), left.name))
+        {
+            return false;
+        }
+
+        return 0 == right.compare(0, left.name_space.size(), left.name_space);
+    }
 
     struct method_signature
     {
@@ -98,29 +140,45 @@ namespace cppwin32
         array_type,
         fundamental_type,
         interface_type,
-        raw_interface_type, // not COM
         delegate_type,
         generic_type
     };
 
-    bool is_raw_interface(TypeDef const& type)
+    inline param_category get_category(coded_index<TypeDefOrRef> const& type, TypeDef* signature_type = nullptr)
     {
-        if (type.TypeName() == "IUnknown")
+        TypeDef type_def;
+        if (type.type() == TypeDefOrRef::TypeDef)
         {
-            return false;
+            type_def = type.TypeDef();
         }
-        for (auto& impl : type.InterfaceImpl())
+        else
         {
-            auto base = find(impl.Interface());
-            if (base)
+            auto type_ref = type.TypeRef();
+            if (type_name(type_ref) == "System.Guid")
             {
-                if (!is_raw_interface(base))
-                {
-                    return false;
-                }
+                return param_category::struct_type;
             }
+            type_def = find_required(type_ref);
         }
-        return true;
+
+        if (signature_type)
+        {
+            *signature_type = type_def;
+        }
+
+        switch (get_category(type_def))
+        {
+        case category::interface_type:
+            return param_category::interface_type;
+        case category::enum_type:
+            return param_category::enum_type;
+        case category::struct_type:
+            return param_category::struct_type;
+        case category::delegate_type:
+            return param_category::delegate_type;
+        default:
+            return param_category::generic_type;
+        }
     }
 
     inline param_category get_category(TypeSig const& signature, TypeDef* signature_type = nullptr)
@@ -139,45 +197,7 @@ namespace cppwin32
             },
             [&](coded_index<TypeDefOrRef> const& type)
             {
-                TypeDef type_def;
-                if (type.type() == TypeDefOrRef::TypeDef)
-                {
-                    type_def = type.TypeDef();
-                }
-                else
-                {
-                    auto type_ref = type.TypeRef();
-                    if (type_name(type_ref) == "System.Guid")
-                    {
-                        result = param_category::struct_type;
-                        return;
-                    }
-                    type_def = find_required(type_ref);
-                }
-
-                if (signature_type)
-                {
-                    *signature_type = type_def;
-                }
-
-                switch (get_category(type_def))
-                {
-                case category::interface_type:
-                    result = is_raw_interface(type_def) ? param_category::raw_interface_type : param_category::interface_type;
-                    return;
-                case category::enum_type:
-                    result = param_category::enum_type;
-                    return;
-                case category::struct_type:
-                    result = param_category::struct_type;
-                    return;
-                case category::delegate_type:
-                    result = param_category::delegate_type;
-                    return;
-                default:
-                    result = param_category::generic_type;
-                    return;
-                }
+                result = get_category(type);
             },
                 [&](auto&&)
             {

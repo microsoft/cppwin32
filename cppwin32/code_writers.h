@@ -1,12 +1,29 @@
 #pragma once
 
 #include "type_writers.h"
-#include "helpers.h"
 
 #include <unordered_set>
 
 namespace cppwin32
 {
+    struct separator
+    {
+        writer& w;
+        bool first{ true };
+
+        void operator()()
+        {
+            if (first)
+            {
+                first = false;
+            }
+            else
+            {
+                w.write(", ");
+            }
+        }
+    };
+
     struct finish_with
     {
         writer& w;
@@ -910,55 +927,33 @@ namespace cppwin32
             bind<write_guid_value>(guid_value),
             guid_str);
     }
-    
-    std::vector<std::pair<std::string_view, MethodDef>> non_inherited_methods(TypeDef const& type)
+
+    void write_base_interface(writer& w, TypeDef const& type)
     {
-        std::vector<std::pair<std::string_view, MethodDef>> result;
-        auto const& nested_types = type.get_cache().nested_types(type);
-
-        int const methods_to_skip = 3; // Skip IUnknown methods. TODO: Skip base interface methods
-        if (nested_types.size() <= 4)
+        auto bases = type.InterfaceImpl();
+        if (!empty(bases))
         {
-            // The minimum is 3 delegates for the IUnknown methods and 1 for the vtable
-            return result;
+            XLANG_ASSERT(size(bases) == 1);
+            w.write(" : %", bases.first.Interface());
         }
-
-        auto const& vtbl = nested_types.back();
-        XLANG_ASSERT(nested_types.size() - 1 == size(vtbl.FieldList()));
-
-        for (size_t i = methods_to_skip; i < nested_types.size() - 1; ++i)
-        {
-            auto name = nested_types[i].TypeName().substr(1); // Strip leading underscore
-            auto method_list = nested_types[i].MethodList();
-            XLANG_ASSERT(size(method_list) == 4); // .ctor, Invoke, BeginInvoke, EndInvoke
-            result.push_back({ name, method_list.first[1] });
-        }
-
-        return result;
     }
 
-    bool is_interface_projected(TypeDef const& type)
+    void write_interface(writer& w, TypeDef const& type)
     {
-        return type.TypeName() != "IUnknown" && !is_raw_interface(type) && get_attribute(type, "System.Runtime.InteropServices", "GuidAttribute");
-    }
-
-    void write_interface_abi(writer& w, TypeDef const& type)
-    {
-        if (!is_interface_projected(type))
+        auto const method_list = type.MethodList();
+        if (empty(method_list))
         {
             return;
         }
 
         {
-            auto const format = R"(    template <> struct abi<%>
+            auto const format = R"(    struct __declspec(novtable) %%
     {
-        struct __declspec(novtable) type : unknown_abi
-        {
 )";
-            w.write(format, type);
+            w.write(format, type.TypeName(), bind<write_base_interface>(type));
         }
 
-        auto const format = R"(            virtual % __stdcall %(%) noexcept = 0;
+        auto const format = R"(        virtual % __stdcall %(%) noexcept = 0;
 )";
         auto abi_guard = w.push_abi_types(true);
         
@@ -968,8 +963,7 @@ namespace cppwin32
             w.write(format, bind<write_abi_return>(signature.return_signature()), method.Name(), bind<write_abi_params>(signature));
         }
 
-        w.write(R"(        };
-    };
+        w.write(R"(    };
 )");
     }
 
@@ -991,10 +985,6 @@ namespace cppwin32
 
     void write_consume(writer& w, TypeDef const& type)
     {
-        if (!is_interface_projected(type))
-        {
-            return;
-        }
         auto const& method_list = type.MethodList();
         auto const impl_name = get_impl_name(type.TypeNamespace(), type.TypeName());
 
@@ -1006,30 +996,6 @@ namespace cppwin32
         w.write(format,
             impl_name,
             bind_each<write_consume_declaration>(method_list));
-    }
-
-    void write_interface(writer& w, TypeDef const& type)
-    {
-        if (!is_interface_projected(type))
-        {
-            return;
-        }
-
-        auto const type_name = type.TypeName();
-
-        auto const format = R"(    struct __declspec(empty_bases) % :
-        Windows::Win32::IUnknown,
-        _impl_::consume_%
-    {
-        %(std::nullptr_t = nullptr) noexcept {}
-        %(void* ptr, take_ownership_from_abi_t) noexcept : Windows::Win32::IUnknown(ptr, take_ownership_from_abi) {}
-    };
-)";
-        w.write(format,
-            type_name,
-            get_impl_name(type.TypeNamespace(), type_name),
-            type_name,
-            type_name);
     }
 
     void write_raii_helper(writer& w, Param const& param, std::set<std::string_view>& helpers)
@@ -1103,19 +1069,5 @@ namespace cppwin32
             bind<write_method_args>(signature),
             bind<write_consume_return_statement>(signature)
         );
-    }
-
-    void write_consume_definitions(writer& w, TypeDef const& type)
-    {
-        if (!is_interface_projected(type))
-        {
-            return;
-        }
-
-        auto const impl_name = get_impl_name(type.TypeNamespace(), type.TypeName());
-        for (auto&& method : type.MethodList())
-        {
-            write_consume_definition(w, type, method, impl_name);
-        }
     }
 }

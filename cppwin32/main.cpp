@@ -56,24 +56,20 @@ int main(int const argc, char* argv[])
             w.write_each<write_guid>(members.interfaces);
             w.write("#pragma endregion guids\n\n");
 
-            w.write("#pragma region abi_interfaces\n");
-            w.write_each<write_interface_abi>(members.interfaces);
-            w.write("#pragma endregion abi_interfaces\n\n");
-
-            w.write("#pragma region consume\n");
-            w.write_each<write_consume>(members.interfaces);
-            w.write("#pragma endregion consume\n\n");
+            //w.write("#pragma region consume\n");
+            //w.write_each<write_consume>(members.interfaces);
+            //w.write("#pragma endregion consume\n\n");
         }
         {
             auto wrap = wrap_type_namespace(w, ns);
 
-            w.write("#pragma region interfaces\n");
-            w.write_each<write_interface>(members.interfaces);
-            w.write("#pragma endregion interfaces\n\n");
-
             w.write("#pragma region structs\n");
             write_structs(w, members.structs);
             w.write("#pragma endregion structs\n\n");
+
+            w.write("#pragma region interfaces\n");
+            w.write_each<write_interface>(members.interfaces);
+            w.write("#pragma endregion interfaces\n\n");
         }
         {
             w.write("#pragma region abi_methods\n");
@@ -98,9 +94,9 @@ int main(int const argc, char* argv[])
         {
             auto wrap = wrap_impl_namespace(w);
 
-            w.write("#pragma region consume_methods\n");
-            w.write_each<write_consume_definitions>(members.interfaces);
-            w.write("#pragma endregion consume_methods\n\n");
+            //w.write("#pragma region consume_methods\n");
+            //w.write_each<write_consume_definitions>(members.interfaces);
+            //w.write("#pragma endregion consume_methods\n\n");
         }
 
         w.save_header(o.output_folder.string());

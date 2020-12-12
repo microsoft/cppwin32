@@ -1,69 +1,12 @@
 #pragma once
 
-#include "text_writer.h"
 #include <winmd_reader.h>
+#include "text_writer.h"
+#include "helpers.h"
 
 namespace cppwin32
 {
     using namespace winmd::reader;
-
-    template <typename...T> struct visit_overload : T... { using T::operator()...; };
-
-    template <typename V, typename...C>
-    auto call(V&& variant, C&&...call)
-    {
-        return std::visit(visit_overload<C...>{ std::forward<C>(call)... }, std::forward<V>(variant));
-    }
-
-    struct type_name
-    {
-        std::string_view name;
-        std::string_view name_space;
-
-        explicit type_name(TypeDef const& type) :
-            name(type.TypeName()),
-            name_space(type.TypeNamespace())
-        {
-        }
-
-        explicit type_name(TypeRef const& type) :
-            name(type.TypeName()),
-            name_space(type.TypeNamespace())
-        {
-        }
-
-        explicit type_name(coded_index<TypeDefOrRef> const& type)
-        {
-            auto const& [type_namespace, type_name] = get_type_namespace_and_name(type);
-            name_space = type_namespace;
-            name = type_name;
-        }
-    };
-
-    bool operator==(type_name const& left, type_name const& right)
-    {
-        return left.name == right.name && left.name_space == right.name_space;
-    }
-
-    bool operator==(type_name const& left, std::string_view const& right)
-    {
-        if (left.name.size() + 1 + left.name_space.size() != right.size())
-        {
-            return false;
-        }
-
-        if (right[left.name_space.size()] != '.')
-        {
-            return false;
-        }
-
-        if (0 != right.compare(left.name_space.size() + 1, left.name.size(), left.name))
-        {
-            return false;
-        }
-
-        return 0 == right.compare(0, left.name_space.size(), left.name_space);
-    }
 
     template <typename First, typename... Rest>
     auto get_impl_name(First const& first, Rest const&... rest)
@@ -388,6 +331,10 @@ namespace cppwin32
                         {
                             write('*');
                         }
+                    }
+                    if (get_category(type) == param_category::interface_type)
+                    {
+                        write('*');
                     }
                 },
                 [&](auto&& type)

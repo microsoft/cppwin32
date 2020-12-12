@@ -253,23 +253,6 @@ WIN32_EXPORT namespace win32
 
 namespace win32::_impl_
 {
-    template <> struct abi<Windows::Win32::IUnknown>
-    {
-        struct __declspec(novtable) type
-        {
-            virtual int32_t __stdcall QueryInterface(guid const& id, void** object) noexcept = 0;
-            virtual uint32_t __stdcall AddRef() noexcept = 0;
-            virtual uint32_t __stdcall Release() noexcept = 0;
-        };
-    };
-
-    using unknown_abi = abi_t<Windows::Win32::IUnknown>;
-
-    template <> inline constexpr guid guid_v<Windows::Win32::IUnknown>{ 0x00000000, 0x0000, 0x0000, { 0xC0,0x00,0x00,0x00,0x00,0x00,0x00,0x46 } };
-}
-
-namespace win32::_impl_
-{
     template <typename T>
     using com_ref = std::conditional_t<std::is_base_of_v<Windows::Win32::IUnknown, T>, T, com_ptr<T>>;
 
@@ -287,10 +270,10 @@ namespace win32::_impl_
 
 #ifdef WIN32_IMPL_IUNKNOWN_DEFINED
     template <typename T>
-    struct is_com_interface : std::disjunction<std::is_base_of<Windows::Win32::IUnknown, T>, std::is_base_of<unknown_abi, T>, is_implements<T>, std::is_base_of<::IUnknown, T>> {};
+    struct is_com_interface : std::disjunction<std::is_base_of<Windows::Win32::IUnknown, T>, is_implements<T>, std::is_base_of<::IUnknown, T>> {};
 #else
     template <typename T>
-    struct is_com_interface : std::disjunction<std::is_base_of<Windows::Win32::IUnknown, T>, std::is_base_of<unknown_abi, T>, is_implements<T>> {};
+    struct is_com_interface : std::disjunction<std::is_base_of<Windows::Win32::IUnknown, T>, is_implements<T>> {};
 #endif
 
     template <typename T>
@@ -331,136 +314,9 @@ namespace win32::_impl_
     }
 }
 
-
 WIN32_EXPORT namespace win32::Windows::Win32
 {
-    struct IUnknown
-    {
-        IUnknown() noexcept = default;
-        IUnknown(std::nullptr_t) noexcept {}
-        void* operator new(size_t) = delete;
-
-        IUnknown(void* ptr, take_ownership_from_abi_t) noexcept : m_ptr(static_cast<_impl_::unknown_abi*>(ptr))
-        {
-        }
-
-        IUnknown(IUnknown const& other) noexcept : m_ptr(other.m_ptr)
-        {
-            add_ref();
-        }
-
-        IUnknown(IUnknown&& other) noexcept : m_ptr(std::exchange(other.m_ptr, {}))
-        {
-        }
-
-        ~IUnknown() noexcept
-        {
-            release_ref();
-        }
-
-        IUnknown& operator=(IUnknown const& other) noexcept
-        {
-            if (this != &other)
-            {
-                release_ref();
-                m_ptr = other.m_ptr;
-                add_ref();
-            }
-
-            return*this;
-        }
-
-        IUnknown& operator=(IUnknown&& other) noexcept
-        {
-            if (this != &other)
-            {
-                release_ref();
-                m_ptr = std::exchange(other.m_ptr, {});
-            }
-
-            return*this;
-        }
-
-        explicit operator bool() const noexcept
-        {
-            return nullptr != m_ptr;
-        }
-
-        IUnknown& operator=(std::nullptr_t) noexcept
-        {
-            release_ref();
-            return*this;
-        }
-
-        template <typename To>
-        auto as() const
-        {
-            return _impl_::as<To>(m_ptr);
-        }
-
-        template <typename To>
-        auto try_as() const noexcept
-        {
-            return _impl_::try_as<To>(m_ptr);
-        }
-
-        template <typename To>
-        void as(To& to) const
-        {
-            to = as<_impl_::wrapped_type_t<To>>();
-        }
-
-        template <typename To>
-        bool try_as(To& to) const noexcept
-        {
-            if constexpr (_impl_::is_com_interface_v<To> || !std::is_same_v<To, _impl_::wrapped_type_t<To>>)
-            {
-                to = try_as<_impl_::wrapped_type_t<To>>();
-                return static_cast<bool>(to);
-            }
-            else
-            {
-                auto result = try_as<To>();
-                to = result.has_value() ? result.value() : _impl_::empty_value<To>();
-                return result.has_value();
-            }
-        }
-
-        hresult as(guid const& id, void** result) const noexcept
-        {
-            return m_ptr->QueryInterface(id, result);
-        }
-
-        friend void swap(IUnknown& left, IUnknown& right) noexcept
-        {
-            std::swap(left.m_ptr, right.m_ptr);
-        }
-
-    private:
-
-        void add_ref() const noexcept
-        {
-            if (m_ptr)
-            {
-                m_ptr->AddRef();
-            }
-        }
-
-        void release_ref() noexcept
-        {
-            if (m_ptr)
-            {
-                unconditional_release_ref();
-            }
-        }
-
-        __declspec(noinline) void unconditional_release_ref() noexcept
-        {
-            std::exchange(m_ptr, {})->Release();
-        }
-
-        _impl_::unknown_abi* m_ptr{};
-    };
+    struct IUnknown;
 }
 
 WIN32_EXPORT namespace win32
@@ -502,62 +358,9 @@ WIN32_EXPORT namespace win32
         return result;
     }
 
-    inline void* get_abi(Windows::Win32::IUnknown const& object) noexcept
-    {
-        return *(void**)(&object);
-    }
-
-    inline void** put_abi(Windows::Win32::IUnknown& object) noexcept
-    {
-        object = nullptr;
-        return reinterpret_cast<void**>(&object);
-    }
-
-    inline void attach_abi(Windows::Win32::IUnknown& object, void* value) noexcept
-    {
-        object = nullptr;
-        *put_abi(object) = value;
-    }
-
-    inline void* detach_abi(Windows::Win32::IUnknown& object) noexcept
-    {
-        void* temp = get_abi(object);
-        *reinterpret_cast<void**>(&object) = nullptr;
-        return temp;
-    }
-
-    inline void* detach_abi(Windows::Win32::IUnknown&& object) noexcept
-    {
-        void* temp = get_abi(object);
-        *reinterpret_cast<void**>(&object) = nullptr;
-        return temp;
-    }
-
     constexpr void* detach_abi(std::nullptr_t) noexcept
     {
         return nullptr;
-    }
-
-    inline void copy_from_abi(Windows::Win32::IUnknown& object, void* value) noexcept
-    {
-        object = nullptr;
-
-        if (value)
-        {
-            static_cast<_impl_::unknown_abi*>(value)->AddRef();
-            *put_abi(object) = value;
-        }
-    }
-
-    inline void copy_to_abi(Windows::Win32::IUnknown const& object, void*& value) noexcept
-    {
-        WIN32_ASSERT(value == nullptr);
-        value = get_abi(object);
-
-        if (value)
-        {
-            static_cast<_impl_::unknown_abi*>(value)->AddRef();
-        }
     }
 
 #ifdef WIN32_IMPL_IUNKNOWN_DEFINED
@@ -568,55 +371,6 @@ WIN32_EXPORT namespace win32
     }
 
 #endif
-}
-
-WIN32_EXPORT namespace win32::Windows::Win32
-{
-    inline bool operator==(IUnknown const& left, IUnknown const& right) noexcept
-    {
-        if (get_abi(left) == get_abi(right))
-        {
-            return true;
-        }
-        if (!left || !right)
-        {
-            return false;
-        }
-        return get_abi(left.try_as<IUnknown>()) == get_abi(right.try_as<IUnknown>());
-    }
-
-    inline bool operator!=(IUnknown const& left, IUnknown const& right) noexcept
-    {
-        return !(left == right);
-    }
-
-    inline bool operator<(IUnknown const& left, IUnknown const& right) noexcept
-    {
-        if (get_abi(left) == get_abi(right))
-        {
-            return false;
-        }
-        if (!left || !right)
-        {
-            return get_abi(left) < get_abi(right);
-        }
-        return get_abi(left.try_as<IUnknown>()) < get_abi(right.try_as<IUnknown>());
-    }
-
-    inline bool operator>(IUnknown const& left, IUnknown const& right) noexcept
-    {
-        return right < left;
-    }
-
-    inline bool operator<=(IUnknown const& left, IUnknown const& right) noexcept
-    {
-        return !(right < left);
-    }
-
-    inline bool operator>=(IUnknown const& left, IUnknown const& right) noexcept
-    {
-        return !(left < right);
-    }
 }
 
 WIN32_EXPORT namespace win32
