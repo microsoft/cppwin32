@@ -232,6 +232,17 @@ namespace cppwin32
         return invoke;
     }
 
+    coded_index<TypeDefOrRef> get_base_interface(TypeDef const& type)
+    {
+        auto bases = type.InterfaceImpl();
+        if (!empty(bases))
+        {
+            XLANG_ASSERT(size(bases) == 1);
+            return bases.first.Interface();
+        }
+        return {};
+    }
+
     struct dependency_sorter
     {
         struct node
@@ -297,6 +308,23 @@ namespace cppwin32
             for (auto const& [param, param_sig] : method_signature.params())
             {
                 add_param(param_sig->Type());
+            }
+        }
+
+        void add_interface(TypeDef const& type)
+        {
+            auto [it, inserted] = dependency_map.insert({ type, {} });
+            if (!inserted) return;
+
+            auto const base_index = get_base_interface(type);
+            if (base_index)
+            {
+                auto const base_type = find(base_index);
+                if (base_type)
+                {
+                    it->second.add_edge(base_type);
+                    add_interface(base_type);
+                }
             }
         }
 
@@ -484,14 +512,15 @@ namespace cppwin32
             return;
         }
 
-        auto const category = get_category(signature.return_signature().Type());
+        TypeDef type;
+        auto const category = get_category(signature.return_signature().Type(), &type);
 
-        if (category == param_category::interface_type)
-        {
-            auto consume_guard = w.push_consume_types(true);
-            w.write("\n        return %{ %, take_ownership_from_abi };", signature.return_signature(), signature.return_param_name());
-        }
-        else
+        //if (category == param_category::interface_type)
+        //{
+        //    auto consume_guard = w.push_consume_types(true);
+        //    w.write("\n        return com_ptr<%>{ %, take_ownership_from_abi };", signature.return_signature(), signature.return_param_name());
+        //}
+        //else
         {
             w.write("\n        return %;", signature.return_param_name());
         }
@@ -930,22 +959,15 @@ namespace cppwin32
 
     void write_base_interface(writer& w, TypeDef const& type)
     {
-        auto bases = type.InterfaceImpl();
-        if (!empty(bases))
+        auto const base = get_base_interface(type);
+        if (base)
         {
-            XLANG_ASSERT(size(bases) == 1);
-            w.write(" : %", bases.first.Interface());
+            w.write(" : %", base);
         }
     }
 
     void write_interface(writer& w, TypeDef const& type)
     {
-        auto const method_list = type.MethodList();
-        if (empty(method_list))
-        {
-            return;
-        }
-
         {
             auto const format = R"(    struct __declspec(novtable) %%
     {
@@ -965,6 +987,21 @@ namespace cppwin32
 
         w.write(R"(    };
 )");
+    }
+
+    void write_interfaces(writer& w, std::vector<TypeDef> const& interfaces)
+    {
+        dependency_sorter ds;
+        for (auto&& type : interfaces)
+        {
+            ds.add_interface(type);
+        }
+
+        auto sorted_types = ds.sort();
+        for (auto&& type : sorted_types)
+        {
+            write_interface(w, type);
+        }
     }
 
     void write_consume_params(writer& w, method_signature const& signature)

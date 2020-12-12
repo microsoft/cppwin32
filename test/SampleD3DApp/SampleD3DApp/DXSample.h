@@ -17,8 +17,8 @@ struct DXSample
     auto Height() const noexcept { return m_height; }
 
 protected:
-    win32::Microsoft::Windows::Sdk::Win32::IDXGIAdapter1 GetHardwareAdapter(
-        win32::Microsoft::Windows::Sdk::Win32::IDXGIFactory1 const& factory,
+    win32::com_ptr<win32::Windows::Win32::IDXGIAdapter1> GetHardwareAdapter(
+        win32::Windows::Win32::IDXGIFactory1* factory,
         bool requestHighPerformanceAdapter = false);
 
     uint32_t m_width;

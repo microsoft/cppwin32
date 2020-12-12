@@ -197,12 +197,30 @@ namespace cppwin32
             },
             [&](coded_index<TypeDefOrRef> const& type)
             {
-                result = get_category(type);
+                result = get_category(type, signature_type);
             },
                 [&](auto&&)
             {
                 result = param_category::generic_type;
             });
         return result;
+    }
+
+    inline bool is_com_interface(TypeDef const& type)
+    {
+        if (type.TypeName() == "IUnknown")
+        {
+            return true;
+        }
+
+        for (auto&& base : type.InterfaceImpl())
+        {
+            auto base_type = find(base.Interface());
+            if (base_type && is_com_interface(base_type))
+            {
+                return true;
+            }
+        }
+        return false;
     }
 }

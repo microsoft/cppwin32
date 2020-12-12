@@ -213,18 +213,11 @@ namespace cppwin32
 
         void write(TypeDef const& type)
         {
-            if (abi_types && get_category(type) == category::interface_type)
+            if (full_namespace)
             {
-                write("void*");
+                write("win32::");
             }
-            else
-            {
-                if (full_namespace)
-                {
-                    write("win32::");
-                }
-                write("@::%", type.TypeNamespace(), type.TypeName());
-            }
+            write("@::%", type.TypeNamespace(), type.TypeName());
         }
 
         void write(TypeRef const& type)

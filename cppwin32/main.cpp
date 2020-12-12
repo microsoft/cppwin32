@@ -68,7 +68,7 @@ int main(int const argc, char* argv[])
             w.write("#pragma endregion structs\n\n");
 
             w.write("#pragma region interfaces\n");
-            w.write_each<write_interface>(members.interfaces);
+            write_interfaces(w, members.interfaces);
             w.write("#pragma endregion interfaces\n\n");
         }
         {

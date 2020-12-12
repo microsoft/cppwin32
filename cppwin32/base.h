@@ -461,7 +461,7 @@ WIN32_EXPORT namespace win32
 
         type** put() noexcept
         {
-            WINRT_ASSERT(m_ptr == nullptr);
+            WIN32_ASSERT(m_ptr == nullptr);
             return &m_ptr;
         }
 
