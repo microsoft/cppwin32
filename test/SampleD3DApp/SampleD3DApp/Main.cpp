@@ -1,6 +1,6 @@
 #include "pch.h"
 
-using namespace win32::Microsoft::Windows::Sdk::Win32;
+using namespace win32::Windows::Win32;
 
 intptr_t __stdcall WindowProc(intptr_t hwnd, uint32_t message, size_t wParam, intptr_t lParam);
 
@@ -11,10 +11,7 @@ int main()
     WNDCLASSEXW windowClass{};
     windowClass.cbSize = sizeof(WNDCLASSEXW);
     windowClass.style = Apis::CS_HREDRAW | Apis::CS_VREDRAW;
-    {
-        WNDPROC temp = WindowProc;
-        windowClass.lpfnWndProc = reinterpret_cast<intptr_t>(temp);
-    }
+    windowClass.lpfnWndProc = WindowProc;
     windowClass.hInstance = hInstance;
     windowClass.hCursor = Apis::LoadCursorW(0, (uint16_t*)(Apis::IDC_ARROW)); // TODO: 
     windowClass.lpszClassName = (uint16_t*)(L"DXSampleClass");
