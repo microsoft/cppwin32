@@ -25,7 +25,7 @@ win32::com_ptr<IDXGIAdapter1> DXSample::GetHardwareAdapter(
 
         // Check to see whether the adapter supports Direct3D 12, but don't create the
         // actual device yet.
-        if (0 == Apis::D3D12CreateDevice(adapter.get(), D3D_FEATURE_LEVEL::D3D_FEATURE_LEVEL_11_0, &guid_of<ID3D12Device>(), nullptr))
+        if (0 == Apis::D3D12CreateDevice(adapter.get(), D3D_FEATURE_LEVEL::D3D_FEATURE_LEVEL_11_0, (guid*)&guid_of<ID3D12Device>(), nullptr))
         {
             break;
         }
