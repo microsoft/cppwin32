@@ -159,35 +159,29 @@ namespace cppwin32
             complex_struct(writer& w, TypeDef const& type)
                 : type(type)
             {
+#ifdef _DEBUG
+                if (type.TypeName() == "DXGI_ADAPTER_DESC1")
+                {
+                    type.TypeNamespace();
+                }
+#endif
                 fields.reserve(size(type.FieldList()));
                 for (auto&& field : type.FieldList())
                 {
                     auto const name = field.Name();
-                    auto field_type = field.Signature().Type();
+                    auto const signature = field.Signature();
+                    auto const field_type = signature.Type();
+
                     std::optional<int32_t> array_count;
+                    if (field_type.is_array())
+                    {
+                        XLANG_ASSERT(field_type.array_rank() == 1);
+                        array_count = field_type.array_sizes()[0];
+                    }
                     
                     if (auto nested_type = get_nested_type(field_type))
                     {
-                        auto buffer_attribute = get_attribute(field, "System.Runtime.CompilerServices", "FixedBufferAttribute");
-                        if (buffer_attribute)
-                        {
-                            auto const& sig = buffer_attribute.Value();
-                            if (sig.FixedArgs().size() != 2)
-                            {
-                                throw std::invalid_argument("FixedBufferAttribute should have 2 args");
-                            }
-                            array_count = std::get<int32_t>(std::get<ElemSig>(sig.FixedArgs()[1].value).value);
-                            auto nested_type = std::get<coded_index<TypeDefOrRef>>(field_type.Type());
-                            field_type = nested_type.TypeDef().FieldList().first.Signature().Type();
-                            continue;
-                        }
-                        else if (nested_type.TypeName().find("__FixedBuffer") != std::string_view::npos)
-                        {
-                            array_count = static_cast<int32_t>(size(nested_type.FieldList()));
-                            field_type = nested_type.FieldList().first.Signature().Type();
-                            continue;
-                        }
-                        else if (nested_type.Flags().Layout() == TypeLayout::ExplicitLayout && nested_type.TypeName().find("_e__Union") != std::string_view::npos)
+                        if (nested_type.Flags().Layout() == TypeLayout::ExplicitLayout && nested_type.TypeName().find("_e__Union") != std::string_view::npos)
                         {
                             // TODO: unions
                             continue;
