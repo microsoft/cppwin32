@@ -213,11 +213,18 @@ namespace cppwin32
 
         void write(TypeDef const& type)
         {
-            if (full_namespace)
+            if (is_nested(type))
             {
-                write("win32::");
+                write(type.TypeName());
             }
-            write("@::%", type.TypeNamespace(), type.TypeName());
+            else
+            {
+                if (full_namespace)
+                {
+                    write("win32::");
+                }
+                write("@::%", type.TypeNamespace(), type.TypeName());
+            }
         }
 
         void write(TypeRef const& type)
@@ -225,22 +232,28 @@ namespace cppwin32
             if (type.TypeNamespace() == "System" && type.TypeName() == "Guid")
             {
                 write("::win32::guid");
-                return;
             }
-            if (abi_types)
+            else if (is_nested(type))
             {
-                auto type_def = find(type);
-                if (type_def)
+                write(type.TypeName());
+            }
+            else
+            {
+                if (abi_types)
                 {
-                    write(type_def);
-                    return;
+                    auto type_def = find(type);
+                    if (type_def)
+                    {
+                        write(type_def);
+                        return;
+                    }
                 }
+                if (full_namespace)
+                {
+                    write("win32::");
+                }
+                write("@::%", type.TypeNamespace(), type.TypeName());
             }
-            if (full_namespace)
-            {
-                write("win32::");
-            }
-            write("@::%", type.TypeNamespace(), type.TypeName());
         }
 
         void write(coded_index<TypeDefOrRef> const& type)

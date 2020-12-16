@@ -99,10 +99,11 @@ namespace cppwin32
 
     void write_forward(writer& w, TypeDef const& type)
     {
-        auto format = R"(    struct %;
+        std::string_view const type_keyword = is_union(type) ? "union" : "struct";
+        auto format = R"(    % %;
 )";
 
-        w.write(format, type.TypeName());
+        w.write(format, type_keyword, type.TypeName());
     }
 
     struct struct_field
@@ -158,14 +159,13 @@ namespace cppwin32
     void write_struct(writer& w, TypeDef const& type, int nest_level = 0)
     {
 #ifdef _DEBUG
-        if (type.TypeName() == "DXGI_ADAPTER_DESC1")
+        if (type.TypeName() == "EVENT_PROPERTY_INFO")
         {
             type.TypeNamespace();
         }
 #endif
 
-        bool const is_union = type.Flags().Layout() == TypeLayout::ExplicitLayout;
-        std::string_view const type_keyword = is_union ? "union" : "struct";
+        std::string_view const type_keyword = is_union(type) ? "union" : "struct";
         w.write(R"(    %% %
     %{
 )", bind<write_nesting>(nest_level), type_keyword, type.TypeName(), bind<write_nesting>(nest_level));
@@ -195,25 +195,25 @@ namespace cppwin32
                         array_count = field_type.array_sizes()[0];
                     }
                     
-                    if (auto nested_type = get_nested_type(field_type))
-                    {
-                        if (nested_type.Flags().Layout() == TypeLayout::ExplicitLayout && nested_type.TypeName().find("_e__Union") != std::string_view::npos)
-                        {
-                            // TODO: unions
-                            continue;
-                        }
-                        else if (nested_type.TypeName().find("_e__Struct") != std::string_view::npos)
-                        {
-                            // TODO: unions
-                            continue;
-                        }
-                        continue;
-                    }
-                    auto const index = std::get_if<coded_index<TypeDefOrRef>>(&field_type.Type());
-                    if (index && !find(*index))
-                    {
-                        continue;
-                    }
+                    //if (auto nested_type = get_nested_type(field_type))
+                    //{
+                    //    if (nested_type.Flags().Layout() == TypeLayout::ExplicitLayout && nested_type.TypeName().find("_e__Union") != std::string_view::npos)
+                    //    {
+                    //        // TODO: unions
+                    //        continue;
+                    //    }
+                    //    else if (nested_type.TypeName().find("_e__Struct") != std::string_view::npos)
+                    //    {
+                    //        // TODO: unions
+                    //        continue;
+                    //    }
+                    //    continue;
+                    //}
+                    //auto const index = std::get_if<coded_index<TypeDefOrRef>>(&field_type.Type());
+                    //if (index && !find(*index))
+                    //{
+                    //    continue;
+                    //}
                     
                     fields.push_back({ name, w.write_temp("%", field_type), array_count });
                 }
@@ -282,14 +282,20 @@ namespace cppwin32
 
         void add_struct(TypeDef const& type)
         {
+#ifdef _DEBUG
+            if (type.TypeName() == "DHCP_ALL_OPTIONS")
+            {
+                type.TypeNamespace();
+            }
+#endif
             auto [it, inserted] = dependency_map.insert({ type, {} });
             if (!inserted) return;
             for (auto&& field : type.FieldList())
             {
                 auto const signature = field.Signature();
-                if (signature.Type().ptr_count() == 0)
+                if (auto const field_type = std::get_if<coded_index<TypeDefOrRef>>(&signature.Type().Type()))
                 {
-                    if (auto const field_type = std::get_if<coded_index<TypeDefOrRef>>(&signature.Type().Type()))
+                    if (signature.Type().ptr_count() == 0 || is_nested(*field_type))
                     {
                         auto field_type_def = find(*field_type);
                         if (field_type_def && get_category(field_type_def) != category::enum_type)
@@ -362,10 +368,7 @@ namespace cppwin32
             }
             v.second.temporary = false;
             v.second.permanent = true;
-            if (!v.first.EnclosingType())
-            {
-                sorted.push_back(v.first);
-            }
+            sorted.push_back(v.first);
         }
 
         std::vector<TypeDef> sort()
@@ -393,7 +396,7 @@ namespace cppwin32
         auto sorted_structs = ds.sort();
         for (auto&& type : sorted_structs)
         {
-            if (get_category(type) == category::struct_type)
+            if (get_category(type) == category::struct_type && !is_nested(type))
             {
                 write_struct(w, type);
             }
