@@ -184,6 +184,10 @@ namespace cppwin32
                 fields.reserve(size(type.FieldList()));
                 for (auto&& field : type.FieldList())
                 {
+                    if (field.Flags().Literal())
+                    {
+                        continue;
+                    }
                     auto const name = field.Name();
                     auto const signature = field.Signature();
                     auto const field_type = signature.Type();
@@ -214,7 +218,6 @@ namespace cppwin32
                     //{
                     //    continue;
                     //}
-                    
                     fields.push_back({ name, w.write_temp("%", field_type), array_count });
                 }
             }
@@ -228,6 +231,18 @@ namespace cppwin32
         for (auto&& field : s.fields)
         {
             write_struct_field(w, field, nest_level);
+        }
+
+        for (auto&& field : type.FieldList())
+        {
+            if (field.Flags().Literal())
+            {
+                auto const constant = field.Constant();
+                w.write("        static constexpr % % = %;\n",
+                    constant.Type(),
+                    field.Name(),
+                    constant);
+            }
         }
 
         w.write(R"(    %};
