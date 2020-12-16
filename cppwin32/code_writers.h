@@ -112,17 +112,25 @@ namespace cppwin32
         std::optional<int32_t> array_count;
     };
 
-    void write_struct_field(writer& w, struct_field const& field)
+    void write_nesting(writer& w, int nest_level)
+    {
+        for (int i = 0; i < nest_level; ++i)
+        {
+            w.write("    ");
+        }
+    }
+
+    void write_struct_field(writer& w, struct_field const& field, int nest_level = 0)
     {
         if (field.array_count)
         {
-            w.write("        @ %[%];\n",
-                field.type, field.name, field.array_count.value());
+            w.write("        %@ %[%];\n",
+                bind<write_nesting>(nest_level), field.type, field.name, field.array_count.value());
         }
         else
         {
-            w.write("        @ %;\n",
-                field.type, field.name);
+            w.write("        %@ %;\n",
+                bind<write_nesting>(nest_level), field.type, field.name);
         }
     }
 
@@ -147,24 +155,32 @@ namespace cppwin32
         return result;
     }
 
-    void write_struct(writer& w, TypeDef const& type)
+    void write_struct(writer& w, TypeDef const& type, int nest_level = 0)
     {
-        auto format = R"(    struct %
-    {
-%    };
-)";
-        auto const name = type.TypeName();
+#ifdef _DEBUG
+        if (type.TypeName() == "DXGI_ADAPTER_DESC1")
+        {
+            type.TypeNamespace();
+        }
+#endif
+
+        bool const is_union = type.Flags().Layout() == TypeLayout::ExplicitLayout;
+        std::string_view const type_keyword = is_union ? "union" : "struct";
+        w.write(R"(    %% %
+    %{
+)", bind<write_nesting>(nest_level), type_keyword, type.TypeName(), bind<write_nesting>(nest_level));
+
+        // Write nested types
+        for (auto&& nested_type : type.get_cache().nested_types(type))
+        {
+            write_struct(w, nested_type, nest_level + 1);
+        }
+        
         struct complex_struct
         {
             complex_struct(writer& w, TypeDef const& type)
                 : type(type)
             {
-#ifdef _DEBUG
-                if (type.TypeName() == "DXGI_ADAPTER_DESC1")
-                {
-                    type.TypeNamespace();
-                }
-#endif
                 fields.reserve(size(type.FieldList()));
                 for (auto&& field : type.FieldList())
                 {
@@ -209,7 +225,13 @@ namespace cppwin32
 
         complex_struct s{ w, type };
 
-        w.write(format, type.TypeName(), bind_each<write_struct_field>(s.fields));
+        for (auto&& field : s.fields)
+        {
+            write_struct_field(w, field, nest_level);
+        }
+
+        w.write(R"(    %};
+)", bind<write_nesting>(nest_level));
     }
 
     MethodDef get_delegate_method(TypeDef const& type)
