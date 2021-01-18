@@ -29,4 +29,15 @@ namespace winmd::reader
     {
         return get_base_class_namespace_and_name(type) == std::pair(typeNamespace, typeName);
     }
+
+    inline bool is_nested(TypeDef const& type)
+    {
+        const auto visibility = type.Flags().Visibility();
+        return visibility == TypeVisibility::Public || visibility == TypeVisibility::NotPublic;
+    }
+
+    inline bool is_nested(TypeRef const& type)
+    {
+        return type.ResolutionScope().type() == ResolutionScope::TypeRef;
+    }
 }

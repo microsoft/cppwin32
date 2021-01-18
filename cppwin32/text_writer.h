@@ -10,18 +10,6 @@
 
 namespace cppwin32
 {
-    [[noreturn]] inline void throw_invalid(std::string const& message)
-    {
-        throw std::invalid_argument(message);
-    }
-
-    template <typename...T>
-    [[noreturn]] inline void throw_invalid(std::string message, T const&... args)
-    {
-        (message.append(args), ...);
-        throw std::invalid_argument(message);
-    }
-
     inline std::string file_to_string(std::string const& filename)
     {
         std::ifstream file(filename, std::ios::binary);

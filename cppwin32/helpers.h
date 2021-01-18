@@ -229,16 +229,6 @@ namespace cppwin32
         return type.Flags().Layout() == TypeLayout::ExplicitLayout;
     }
 
-    inline bool is_nested(TypeDef const& type)
-    {
-        return type.Flags().Visibility() > TypeVisibility::Public;
-    }
-
-    inline bool is_nested(TypeRef const& type)
-    {
-        return type.ResolutionScope().type() == ResolutionScope::TypeRef;
-    }
-
     inline bool is_nested(coded_index<TypeDefOrRef> const& type)
     {
         if (type.type() == TypeDefOrRef::TypeDef)

@@ -24,10 +24,20 @@ namespace cppwin32
     struct writer : writer_base<writer>
     {
         using writer_base<writer>::write;
+
+        struct depends_compare
+        {
+            bool operator()(TypeDef const& left, TypeDef const& right) const
+            {
+                return left.TypeName() < right.TypeName();
+            }
+        };
+
         std::string type_namespace;
         bool abi_types{};
         bool full_namespace{};
         bool consume_types{};
+        std::map<std::string_view, std::set<TypeDef, depends_compare>> depends;
 
         template<typename T>
         struct member_value_guard
@@ -62,6 +72,17 @@ namespace cppwin32
         [[nodiscard]] auto push_consume_types(bool value)
         {
             return member_value_guard(this, &writer::consume_types, value);
+        }
+
+        void write_root_include(std::string_view const& include)
+        {
+            auto format = R"(#include %win32/%.h%
+)";
+
+            write(format,
+                settings.brackets ? '<' : '\"',
+                include,
+                settings.brackets ? '>' : '\"');
         }
 
         template <typename T>
@@ -361,10 +382,23 @@ namespace cppwin32
             }
         }
 
-        void save_header(std::string const& output_folder)
+        void save_header(char impl = 0)
         {
-            auto filename{ output_folder + '/' };
-            filename += type_namespace + ".h";
+            auto filename{ settings.output_folder + "win32/" };
+            if (impl)
+            {
+                filename += "impl/";
+            }
+
+            filename += type_namespace;
+
+            if (impl)
+            {
+                filename += '.';
+                filename += impl;
+            }
+
+            filename += ".h";
             flush_to_file(filename);
         }
     };
