@@ -17,7 +17,6 @@ namespace winmd::reader
                 for (auto&& type : db.TypeDef)
                 {
                     if (type.Flags().value == 0)
-                    //if (!type.Flags().WindowsRuntime())
                     {
                         continue;
                     }

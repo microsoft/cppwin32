@@ -264,20 +264,6 @@ namespace winmd::reader
         {
             return get_coded_index<HasFieldMarshal>(0);
         }
-
-        auto Signature() const
-        {
-            auto cursor = get_blob(1);
-            auto value = uncompress_enum<NativeType>(cursor);
-            if (value == NativeType::Array)
-            {
-                return MarshallingDescriptor{ true, uncompress_enum<NativeType>(cursor) };
-            }
-            else
-            {
-                return MarshallingDescriptor{ false, value };
-            }
-        }
     };
 
     struct TypeSpec : row_base<TypeSpec>

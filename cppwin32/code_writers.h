@@ -425,55 +425,20 @@ namespace cppwin32
         {
             s();
             std::string type;
-            if (param.Flags().HasFieldMarshal())
+            if (get_category(param_signature->Type()) == param_category::interface_type)
             {
-                auto fieldMarshal = param.FieldMarshal();
-                switch (fieldMarshal.Signature().type)
+                if (param.Flags().In())
                 {
-                case NativeType::Lpstr:
-                    if (param.Flags().In())
-                    {
-                        type = "const char*";
-                    }
-                    else
-                    {
-                        type = "char*";
-                    }
-                    break;
-
-                case NativeType::Lpwstr:
-                    if (param.Flags().In())
-                    {
-                        type = "const wchar_t*";
-                    }
-                    else
-                    {
-                        type = "wchar_t*";
-                    }
-                    break;
-
-                default:
-                    type = w.write_temp("%", param_signature->Type());
-                    break;
+                    type = "void*";
+                }
+                else
+                {
+                    type = "void**";
                 }
             }
             else
             {
-                if (get_category(param_signature->Type()) == param_category::interface_type)
-                {
-                    if (param.Flags().In())
-                    {
-                        type = "void*";
-                    }
-                    else
-                    {
-                        type = "void**";
-                    }
-                }
-                else
-                {
-                    type = w.write_temp("%", param_signature->Type());
-                }
+                type = w.write_temp("%", param_signature->Type());
             }
             w.write("% %", type, param.Name());
         }
@@ -595,42 +560,23 @@ namespace cppwin32
     
     void write_method_params(writer& w, method_signature const& method_signature)
     {
-#ifdef _DEBUG
-        if (method_signature.method().Name() == "D3D12CreateDevice")
-        {
-            method_signature.method();
-        }
-#endif
         separator s{ w };
         for (auto&& [param, param_signature] : method_signature.params())
         {
             s();
             std::string type;
-            if (param.Flags().HasFieldMarshal())
-            {
-                auto fieldMarshal = param.FieldMarshal();
-                switch (fieldMarshal.Signature().type)
-                {
-                case NativeType::Lpstr:
-                    if (param.Flags().In())
-                    {
-                        type = "const char*";
-                    }
-                    else
-                    {
-                        type = "char*";
-                    }
-                    break;
+            TypeDef signature_type;
+            auto category = get_category(param_signature->Type(), &signature_type);
 
-                case NativeType::Lpwstr:
-                    if (param.Flags().In())
-                    {
-                        type = "const wchar_t*";
-                    }
-                    else
-                    {
-                        type = "wchar_t*";
-                    }
+            if (param.Flags().In())
+            {
+                switch (category)
+                {
+                case param_category::interface_type:
+                {
+                    auto guard = w.push_consume_types(true);
+                    type = w.write_temp("% const&", param_signature->Type());
+                }
                     break;
 
                 default:
@@ -640,40 +586,18 @@ namespace cppwin32
             }
             else
             {
-                TypeDef signature_type;
-                auto category = get_category(param_signature->Type(), &signature_type);
-
-                if (param.Flags().In())
+                switch (category)
                 {
-                    switch (category)
-                    {
-                    case param_category::interface_type:
-                    {
-                        auto guard = w.push_consume_types(true);
-                        type = w.write_temp("% const&", param_signature->Type());
-                    }
-                        break;
-
-                    default:
-                        type = w.write_temp("%", param_signature->Type());
-                        break;
-                    }
+                case param_category::interface_type:
+                {
+                    auto guard = w.push_consume_types(true);
+                    type = w.write_temp("%&", param_signature->Type());
                 }
-                else
-                {
-                    switch (category)
-                    {
-                    case param_category::interface_type:
-                    {
-                        auto guard = w.push_consume_types(true);
-                        type = w.write_temp("%&", param_signature->Type());
-                    }
-                    break;
+                break;
 
-                    default:
-                        type = w.write_temp("%", param_signature->Type());
-                        break;
-                    }
+                default:
+                    type = w.write_temp("%", param_signature->Type());
+                    break;
                 }
             }
             w.write("% %", type, param.Name());
@@ -808,42 +732,7 @@ namespace cppwin32
         {
             s();
             std::string type;
-            if (param.Flags().HasFieldMarshal())
-            {
-                auto fieldMarshal = param.FieldMarshal();
-                switch (fieldMarshal.Signature().type)
-                {
-                case NativeType::Lpstr:
-                    if (param.Flags().In())
-                    {
-                        type = "const char*";
-                    }
-                    else
-                    {
-                        type = "char*";
-                    }
-                    break;
-
-                case NativeType::Lpwstr:
-                    if (param.Flags().In())
-                    {
-                        type = "const wchar_t*";
-                    }
-                    else
-                    {
-                        type = "wchar_t*";
-                    }
-                    break;
-
-                default:
-                    type = w.write_temp("%", param_signature->Type());
-                    break;
-                }
-            }
-            else
-            {
-                type = w.write_temp("%", param_signature->Type());
-            }
+            type = w.write_temp("%", param_signature->Type());
             w.write("%", type);
         }
     }

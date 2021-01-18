@@ -319,27 +319,6 @@ namespace winmd::reader
         EnableJITcompileTracking = 0x8000,
     };
 
-    enum class NativeType : uint8_t
-    {
-        Boolean = 0x02, // 4 byte boolean value: TRUE = non-zero, FALSE = 0
-        I1 = 0x03,
-        U1 = 0x04,
-        I2 = 0x05,
-        U2 = 0x06,
-        I4 = 0x07,
-        U4 = 0x08,
-        R4 = 0x0b,
-        R8 = 0x0c,
-        Lpstr = 0x14,
-        Lpwstr = 0x15,
-        Int = 0x1f,
-        UInt = 0x20,
-        Func = 0x26,
-        Array = 0x2a,
-        
-        Max = 0x50,
-    };
-
     template <typename T>
     constexpr inline T enum_mask(T value, T mask) noexcept
     {
