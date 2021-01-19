@@ -62,6 +62,11 @@ namespace cppwin32
         write_preamble(w);
         write_open_file_guard(w, ns, '1');
 
+        for (auto&& depends : w.depends)
+        {
+            w.write_depends(depends.first, '1');
+        }
+
         w.write_depends(w.type_namespace, '0');
         w.save_header('1');
     }

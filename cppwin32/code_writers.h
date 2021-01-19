@@ -347,6 +347,11 @@ namespace cppwin32
 
     struct dependency_sorter
     {
+        dependency_sorter() = default;
+        explicit dependency_sorter(std::string_view type_namespace)
+            : type_namespace(type_namespace)
+        {}
+
         struct node
         {
             std::vector<TypeDef> edges;
@@ -363,17 +368,12 @@ namespace cppwin32
             }
         };
 
+        std::string_view type_namespace;
         std::map<TypeDef, node> dependency_map;
         using value_type = std::map<TypeDef, node>::value_type;
 
         void add_struct(TypeDef const& type)
         {
-#ifdef _DEBUG
-            if (type.TypeName() == "DHCP_ALL_OPTIONS")
-            {
-                type.TypeNamespace();
-            }
-#endif
             auto [it, inserted] = dependency_map.insert({ type, {} });
             if (!inserted) return;
             for (auto&& field : type.FieldList())
@@ -482,9 +482,16 @@ namespace cppwin32
         auto sorted_structs = ds.sort();
         for (auto&& type : sorted_structs)
         {
-            if (get_category(type) == category::struct_type && !is_nested(type))
+            if (type.TypeNamespace() == w.type_namespace)
             {
-                write_struct(w, type);
+                if (get_category(type) == category::struct_type && !is_nested(type))
+                {
+                    write_struct(w, type);
+                }
+            }
+            else if (!is_nested(type))
+            {
+                w.add_depends(type);
             }
         }
     }

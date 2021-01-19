@@ -33,7 +33,7 @@ namespace winmd::reader
     inline bool is_nested(TypeDef const& type)
     {
         const auto visibility = type.Flags().Visibility();
-        return visibility == TypeVisibility::Public || visibility == TypeVisibility::NotPublic;
+        return !(visibility == TypeVisibility::Public || visibility == TypeVisibility::NotPublic);
     }
 
     inline bool is_nested(TypeRef const& type)

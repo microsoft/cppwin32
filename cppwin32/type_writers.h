@@ -85,6 +85,16 @@ namespace cppwin32
                 settings.brackets ? '>' : '\"');
         }
 
+        void add_depends(TypeDef const& type)
+        {
+            auto ns = type.TypeNamespace();
+
+            if (ns != type_namespace)
+            {
+                depends[ns].insert(type);
+            }
+        }
+
         void write_depends(std::string_view const& ns, char impl = 0)
         {
             if (impl)
