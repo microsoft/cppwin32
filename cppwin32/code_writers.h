@@ -972,6 +972,18 @@ namespace cppwin32
         auto const format = R"(        virtual % __stdcall %(%) noexcept = 0;
 )";
         auto abi_guard = w.push_abi_types(true);
+
+        // TODO: Fix this type:
+        if (type.TypeName() == "IUIAutomation6" && type.TypeNamespace() == "Windows.Win32.WinAuto")
+        {
+            for (auto&& method : type.MethodList())
+            {
+                w.write(format, "void", method.Name(), "");
+            }
+            w.write(R"(    };
+)");
+            return;
+        }
         
         for (auto&& method : type.MethodList())
         {

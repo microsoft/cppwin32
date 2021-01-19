@@ -188,6 +188,11 @@ namespace cppwin32
             return param_category::array_type;
         }
 
+        if (signature.element_type() == ElementType::Class)
+        {
+            return param_category::interface_type;
+        }
+
         param_category result{};
 
         call(signature.Type(),

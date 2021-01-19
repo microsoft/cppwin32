@@ -45,6 +45,18 @@ namespace cppwin32
         writer w;
         w.type_namespace = ns;
 
+        {
+            auto wrap = wrap_type_namespace(w, ns);
+
+            w.write("#pragma region structs\n");
+            write_structs(w, members.structs);
+            w.write("#pragma endregion structs\n\n");
+
+            w.write("#pragma region interfaces\n");
+            write_interfaces(w, members.interfaces);
+            w.write("#pragma endregion interfaces\n\n");
+        }
+
         write_close_file_guard(w);
         w.swap();
         write_preamble(w);
