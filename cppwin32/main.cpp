@@ -177,8 +177,12 @@ Where <spec> is one or more of:
                 group.add([&, &ns = ns, &members = members]
                     {
                         write_namespace_0_h(ns, members);
+                        write_namespace_1_h(ns, members);
+                        write_namespace_2_h(ns, members);
+                        write_namespace_h(ns, members);
                     });
             }
+            std::filesystem::copy_file("base.h", settings.output_folder + "win32/" + "base.h", std::filesystem::copy_options::overwrite_existing);
         }
         catch (usage_exception const&)
         {

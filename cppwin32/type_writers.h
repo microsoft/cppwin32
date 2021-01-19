@@ -85,6 +85,18 @@ namespace cppwin32
                 settings.brackets ? '>' : '\"');
         }
 
+        void write_depends(std::string_view const& ns, char impl = 0)
+        {
+            if (impl)
+            {
+                write_root_include(write_temp("impl/%.%", ns, impl));
+            }
+            else
+            {
+                write_root_include(ns);
+            }
+        }
+
         template <typename T>
         void write_value(T value)
         {

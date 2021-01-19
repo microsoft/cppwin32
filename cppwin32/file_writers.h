@@ -45,5 +45,41 @@ namespace cppwin32
         writer w;
         w.type_namespace = ns;
 
+        write_close_file_guard(w);
+        w.swap();
+        write_preamble(w);
+        write_open_file_guard(w, ns, '1');
+
+        w.write_depends(w.type_namespace, '0');
+        w.save_header('1');
+    }
+
+    static void write_namespace_2_h(std::string_view const& ns, cache::namespace_members const& members)
+    {
+        writer w;
+        w.type_namespace = ns;
+
+        write_close_file_guard(w);
+        w.swap();
+        write_preamble(w);
+        write_open_file_guard(w, ns, '2');
+
+        w.write_depends(w.type_namespace, '1');
+        w.save_header('2');
+    }
+
+    static void write_namespace_h(std::string_view const& ns, cache::namespace_members const& members)
+    {
+        writer w;
+        w.type_namespace = ns;
+
+        write_close_file_guard(w);
+        w.swap();
+        write_preamble(w);
+        write_open_file_guard(w, ns, '2');
+        write_version_assert(w);
+
+        w.write_depends(w.type_namespace, '2');
+        w.save_header();
     }
 }
