@@ -1,14 +1,17 @@
-# Project
+# The C++ Windows SDK projection
 
-> This repo has been populated by an initial template to help get you started. Please
-> make sure to update the content to build a great experience for community-building.
+C++/Win32 (cppwin32) is a standard C++ language projection for Windows SDK APIs. True, the Windows SDK already releases headers that can be consumed from C++, but those headers have some severe historical and compatiblity constraints that hamper C++ developers that wish to enjoy modern language features. Goals include:
+- Better compliance with C++ standards, particularly C++17 and newer.
+- Eliminating the use of macros for constants, enumerations, and functions, and instead using C++ language constructs that participate in the type system and respect scope.
+- Paving the way towards a Windows SDK that can be used with C++ modules.
 
-As the maintainer of this project, please make a few updates:
+Another goal under investigation and discussion is to converge this projection with the [C++/WinRT projection](https://github.com/microsoft/cppwinrt/).
 
-- Improving this README.MD file to provide a great experience
-- Updating SUPPORT.MD with content about this project's support experience
-- Understanding the security reporting process in SECURITY.MD
-- Remove this section from the README
+## How it works
+
+This projection is similar to [C++/WinRT](https://github.com/microsoft/cppwinrt/) in that it generates projection header files from metadata. Instead of using Windows Runtime metadata, it uses metadata produced by the [Win32 Metadata Project](https://github.com/microsoft/cppwinrt/).
+
+This project is still in the early stages and will continue to grow and evolve. Watch for a Nuget package soon.
 
 ## Contributing
 
