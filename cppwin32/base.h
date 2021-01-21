@@ -1,5 +1,8 @@
 #pragma once
 
+#ifndef WIN32_BASE_H
+#define WIN32_BASE_H
+
 #include <array>
 #include <stddef.h>
 #include <stdint.h>
@@ -880,3 +883,40 @@ WIN32_EXPORT namespace win32
         typename pointer_invalid = std::nullptr_t>
         using unique_any = unique_any_t<_impl_::unique_storage<_impl_::resource_policy<pointer, close_fn_t, close_fn, pointer_storage, invalid_t, invalid, pointer_invalid>>>;
 }
+
+// TODO: Hook this up to a real version
+#define CPPWIN32_VERSION "0.0.0.1"
+
+// WINRT_version is used by Microsoft to analyze C++/WinRT library adoption and inform future product decisions.
+extern "C"
+__declspec(selectany)
+char const* const WIN32_version = "C++/Win32 version:" CPPWIN32_VERSION;
+
+#ifdef _M_IX86
+#pragma comment(linker, "/include:_WIN32_version")
+#else
+#pragma comment(linker, "/include:WIN32_version")
+#endif
+
+WIN32_EXPORT namespace win32
+{
+    template <size_t BaseSize, size_t ComponentSize>
+    constexpr bool check_version(char const(&base)[BaseSize], char const(&component)[ComponentSize]) noexcept
+    {
+        if constexpr (BaseSize != ComponentSize)
+        {
+            return false;
+        }
+
+        for (size_t i = 0; i != BaseSize - 1; ++i)
+        {
+            if (base[i] != component[i])
+            {
+                return false;
+            }
+        }
+
+        return true;
+    }
+}
+#endif

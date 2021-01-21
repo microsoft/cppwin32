@@ -283,14 +283,11 @@ namespace cppwin32
             }
             else
             {
-                if (abi_types)
+                auto type_def = find(type);
+                if (type_def)
                 {
-                    auto type_def = find(type);
-                    if (type_def)
-                    {
-                        write(type_def);
-                        return;
-                    }
+                    write(type_def);
+                    return;
                 }
                 if (full_namespace)
                 {
@@ -375,14 +372,11 @@ namespace cppwin32
                 [&](coded_index<TypeDefOrRef> const& type)
                 {
                     write(type);
-                    if (!consume_types)
+                    for (int i = 0; i < signature.ptr_count(); ++i)
                     {
-                        for (int i = 0; i < signature.ptr_count(); ++i)
-                        {
-                            write('*');
-                        }
+                        write('*');
                     }
-                    if (get_category(type) == param_category::interface_type)
+                    if (signature.element_type() == ElementType::Class)
                     {
                         write('*');
                     }

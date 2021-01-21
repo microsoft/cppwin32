@@ -58,7 +58,7 @@ namespace cppwin32
     static void write_version_assert(writer& w)
     {
         w.write_root_include("base");
-        auto format = R"(static_assert(winrt::check_version(CPPWIN32_VERSION, "%"), "Mismatched C++/Win32 headers.");
+        auto format = R"(static_assert(win32::check_version(CPPWIN32_VERSION, "%"), "Mismatched C++/Win32 headers.");
 #define CPPWIN32_VERSION "%"
 )";
         w.write(format, CPPWIN32_VERSION_STRING, CPPWIN32_VERSION_STRING);
@@ -168,8 +168,24 @@ namespace cppwin32
         w.write(format, type.TypeName(), fields.first.Signature().Type(), bind_each<write_enum_field>(fields));
     }
 
+    void write_delegate(writer& w, TypeDef const& type);
+
     void write_forward(writer& w, TypeDef const& type)
     {
+        if (get_category(type) == category::enum_type)
+        {
+            type_name type_name(type);
+            auto format = R"(    enum class % : %;
+)";
+            w.write(format, type_name.name, type.FieldList().first.Signature().Type());
+            return;
+        }
+        else if (get_category(type) == category::delegate_type)
+        {
+            write_delegate(w, type);
+            return;
+        }
+
         std::string_view const type_keyword = is_union(type) ? "union" : "struct";
         auto format = R"(    % %;
 )";
@@ -318,31 +334,6 @@ namespace cppwin32
 
         w.write(R"(    %};
 )", bind<write_nesting>(nest_level));
-    }
-
-    MethodDef get_delegate_method(TypeDef const& type)
-    {
-        MethodDef invoke;
-        for (auto&& method : type.MethodList())
-        {
-            if (method.Name() == "Invoke")
-            {
-                invoke = method;
-                break;
-            }
-        }
-        return invoke;
-    }
-
-    coded_index<TypeDefOrRef> get_base_interface(TypeDef const& type)
-    {
-        auto bases = type.InterfaceImpl();
-        if (!empty(bases))
-        {
-            XLANG_ASSERT(size(bases) == 1);
-            return bases.first.Interface();
-        }
-        return {};
     }
 
     struct dependency_sorter
@@ -502,23 +493,7 @@ namespace cppwin32
         for (auto&& [param, param_signature] : method_signature.params())
         {
             s();
-            std::string type;
-            if (get_category(param_signature->Type()) == param_category::interface_type)
-            {
-                if (param.Flags().In())
-                {
-                    type = "void*";
-                }
-                else
-                {
-                    type = "void**";
-                }
-            }
-            else
-            {
-                type = w.write_temp("%", param_signature->Type());
-            }
-            w.write("% %", type, param.Name());
+            w.write("% %", param_signature->Type(), param.Name());
         }
     }
 
@@ -589,18 +564,7 @@ namespace cppwin32
             return;
         }
 
-        TypeDef type;
-        auto const category = get_category(signature.return_signature().Type(), &type);
-
-        //if (category == param_category::interface_type)
-        //{
-        //    auto consume_guard = w.push_consume_types(true);
-        //    w.write("\n        return com_ptr<%>{ %, take_ownership_from_abi };", signature.return_signature(), signature.return_param_name());
-        //}
-        //else
-        {
-            w.write("\n        return %;", signature.return_param_name());
-        }
+        w.write("\n        return %;", signature.return_param_name());
     }
 
     void write_class_abi(writer& w, TypeDef const& type)
@@ -642,43 +606,7 @@ namespace cppwin32
         for (auto&& [param, param_signature] : method_signature.params())
         {
             s();
-            std::string type;
-            TypeDef signature_type;
-            auto category = get_category(param_signature->Type(), &signature_type);
-
-            if (param.Flags().In())
-            {
-                switch (category)
-                {
-                case param_category::interface_type:
-                {
-                    auto guard = w.push_consume_types(true);
-                    type = w.write_temp("% const&", param_signature->Type());
-                }
-                    break;
-
-                default:
-                    type = w.write_temp("%", param_signature->Type());
-                    break;
-                }
-            }
-            else
-            {
-                switch (category)
-                {
-                case param_category::interface_type:
-                {
-                    auto guard = w.push_consume_types(true);
-                    type = w.write_temp("%&", param_signature->Type());
-                }
-                break;
-
-                default:
-                    type = w.write_temp("%", param_signature->Type());
-                    break;
-                }
-            }
-            w.write("% %", type, param.Name());
+            w.write("% %", param_signature->Type(), param.Name());
         }
     }
 
@@ -688,35 +616,7 @@ namespace cppwin32
         for (auto&& [param, param_signature] : method_signature.params())
         {
             s();
-            auto const param_name = param.Name();
-
-            TypeDef signature_type;
-            auto category = get_category(param_signature->Type(), &signature_type);
-
-            if (param.Flags().In())
-            {
-                switch (category)
-                {
-                case param_category::interface_type:
-                    w.write("*(void**)(&%)", param_name);
-                    break;
-                default:
-                    w.write(param_name);
-                    break;
-                }
-            }
-            else
-            {
-                switch (category)
-                {
-                case param_category::interface_type:
-                    w.write("_impl_::bind_out(%)", param_name);
-                    break;
-                default:
-                    w.write(param_name);
-                    break;
-                }
-            }
+            w.write(param.Name());
         }
     }
 
@@ -725,17 +625,7 @@ namespace cppwin32
         auto const& ret = method_signature.return_signature();
         if (ret)
         {
-            auto const category = get_category(ret.Type());
-            if (category == param_category::interface_type)
-            {
-                auto consume_guard = w.push_consume_types(true);
-                w.write(ret.Type());
-            }
-            else
-            {
-                w.write(ret.Type());
-
-            }
+            w.write(ret.Type());
         }
         else
         {
@@ -826,20 +716,17 @@ namespace cppwin32
 
     void write_delegates(writer& w, std::vector<TypeDef> const& delegates)
     {
-        dependency_sorter ds;
+        type_dependency_graph graph(w.type_namespace);
+
         for (auto&& type : delegates)
         {
-            ds.add_delegate(type);
+            graph.add_delegate(type);
         }
 
-        auto sorted_delegates = ds.sort();
-        for (auto&& type : sorted_delegates)
-        {
-            if (get_category(type) == category::delegate_type)
+        graph.walk_graph([&w](TypeDef const& type)
             {
                 write_delegate(w, type);
-            }
-        }
+            });
     }
 
     void write_enum_operators(writer& w, TypeDef const& type)
@@ -1004,17 +891,16 @@ namespace cppwin32
 
     void write_interfaces(writer& w, std::vector<TypeDef> const& interfaces)
     {
-        dependency_sorter ds;
+        type_dependency_graph graph(w.type_namespace);
         for (auto&& type : interfaces)
         {
-            ds.add_interface(type);
+            graph.add_interface(type);
         }
 
-        auto sorted_types = ds.sort();
-        for (auto&& type : sorted_types)
-        {
-            write_interface(w, type);
-        }
+        graph.walk_graph([&w](TypeDef const& type)
+            {
+                write_interface(w, type);
+            });
     }
 
     void write_consume_params(writer& w, method_signature const& signature)

@@ -244,4 +244,29 @@ namespace cppwin32
             return is_nested(type.TypeRef());
         }
     }
+
+    MethodDef get_delegate_method(TypeDef const& type)
+    {
+        MethodDef invoke;
+        for (auto&& method : type.MethodList())
+        {
+            if (method.Name() == "Invoke")
+            {
+                invoke = method;
+                break;
+            }
+        }
+        return invoke;
+    }
+
+    coded_index<TypeDefOrRef> get_base_interface(TypeDef const& type)
+    {
+        auto bases = type.InterfaceImpl();
+        if (!empty(bases))
+        {
+            XLANG_ASSERT(size(bases) == 1);
+            return bases.first.Interface();
+        }
+        return {};
+    }
 }

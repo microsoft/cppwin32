@@ -168,8 +168,8 @@ Where <spec> is one or more of:
             }
 
             process_args(args);
-            task_group group;
             cache c{ get_files_to_cache() };
+            task_group group;
 
             w.flush_to_console();
 
@@ -183,7 +183,8 @@ Where <spec> is one or more of:
                         write_namespace_h(ns, members);
                     });
             }
-            write_complex_structs_h(c);
+            group.add([&c] { write_complex_structs_h(c); });
+            group.add([&c] { write_complex_interfaces_h(c); });
 
             std::filesystem::copy_file("base.h", settings.output_folder + "win32/" + "base.h", std::filesystem::copy_options::overwrite_existing);
         }

@@ -1,6 +1,6 @@
 #pragma once
 
-#include "../../../Generated Files/Windows.Win32.h"
+#include <win32/Windows.Win32.Base.h>
 
 #include <stdint.h>
 

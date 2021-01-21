@@ -11,6 +11,9 @@ namespace cppwin32
     struct type_dependency_graph
     {
         type_dependency_graph() = default;
+        explicit type_dependency_graph(std::string_view type_namespace)
+            : type_namespace(type_namespace)
+        {}
 
         enum class walk_state
         {
@@ -35,6 +38,7 @@ namespace cppwin32
 
         std::map<TypeDef, node> graph;
         using value_type = std::map<TypeDef, node>::value_type;
+        std::string_view type_namespace;
 
         template <typename Callback>
         void walk_graph(Callback c)
@@ -75,6 +79,53 @@ namespace cppwin32
                             add_struct(field_type_def);
                         }
                     }
+                }
+            }
+        }
+
+        void add_delegate(TypeDef const& type)
+        {
+            auto [it, inserted] = graph.insert({ type, {} });
+            if (!inserted) return;
+
+            method_signature method_signature{ get_delegate_method(type) };
+            auto add_param = [this, current = it](TypeSig const& type)
+            {
+                auto index = std::get_if<coded_index<TypeDefOrRef>>(&type.Type());
+                if (index)
+                {
+                    auto param_type_def = find(*index);
+                    if (param_type_def && get_category(param_type_def) == category::delegate_type)
+                    {
+                        if (type_namespace.empty() || type_namespace == param_type_def.TypeName())
+                        {
+                            current->second.add_edge(param_type_def);
+                            add_delegate(param_type_def);
+                        }
+                    }
+                }
+            };
+            add_param(method_signature.return_signature().Type());
+            for (auto const& [param, param_sig] : method_signature.params())
+            {
+                add_param(param_sig->Type());
+            }
+        }
+
+        void add_interface(TypeDef const& type)
+        {
+            auto [it, inserted] = graph.insert({ type, {} });
+            if (!inserted) return;
+
+            auto const base_index = get_base_interface(type);
+            if (base_index)
+            {
+                auto const base_type = find(base_index);
+                if (base_type
+                    && (type_namespace.empty() || type_namespace == base_type.TypeNamespace()))
+                {
+                    it->second.add_edge(base_type);
+                    add_interface(base_type);
                 }
             }
         }

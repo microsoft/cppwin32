@@ -1,7 +1,7 @@
 #include "pch.h"
 #include "D3D12HelloWindow.h"
 
-using namespace win32::Windows::Win32;
+using namespace win32::Windows::Win32::Base;
 
 intptr_t __stdcall WindowProc(intptr_t hwnd, uint32_t message, size_t wParam, intptr_t lParam);
 
