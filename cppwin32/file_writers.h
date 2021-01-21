@@ -95,6 +95,12 @@ namespace cppwin32
         write_open_file_guard(w, ns, '2');
 
         w.write_depends(w.type_namespace, '1');
+        // Workaround for https://github.com/microsoft/cppwin32/issues/2
+        for (auto&& extern_depends : w.extern_depends)
+        {
+            auto guard = wrap_type_namespace(w, extern_depends.first);
+            w.write_each<write_extern_forward>(extern_depends.second);
+        }
         w.save_header('2');
     }
 
@@ -117,6 +123,12 @@ namespace cppwin32
         write_version_assert(w);
 
         w.write_depends(w.type_namespace, '2');
+        // Workaround for https://github.com/microsoft/cppwin32/issues/2
+        for (auto&& extern_depends : w.extern_depends)
+        {
+            auto guard = wrap_type_namespace(w, extern_depends.first);
+            w.write_each<write_extern_forward>(extern_depends.second);
+        }
         w.save_header();
     }
 
@@ -187,6 +199,12 @@ namespace cppwin32
         for (auto&& depends : w.depends)
         {
             w.write_depends(depends.first, '1');
+        }
+        // Workaround for https://github.com/microsoft/cppwin32/issues/2
+        for (auto&& extern_depends : w.extern_depends)
+        {
+            auto guard = wrap_type_namespace(w, extern_depends.first);
+            w.write_each<write_extern_forward>(extern_depends.second);
         }
 
         w.flush_to_file(settings.output_folder + "win32/impl/complex_interfaces.h");

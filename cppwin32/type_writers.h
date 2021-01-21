@@ -31,6 +31,10 @@ namespace cppwin32
             {
                 return left.TypeName() < right.TypeName();
             }
+            bool operator()(TypeRef const& left, TypeRef const& right) const
+            {
+                return left.TypeName() < right.TypeName();
+            }
         };
 
         std::string type_namespace;
@@ -38,6 +42,7 @@ namespace cppwin32
         bool full_namespace{};
         bool consume_types{};
         std::map<std::string_view, std::set<TypeDef, depends_compare>> depends;
+        std::map<std::string_view, std::set<TypeRef, depends_compare>> extern_depends;
 
         template<typename T>
         struct member_value_guard
@@ -93,6 +98,13 @@ namespace cppwin32
             {
                 depends[ns].insert(type);
             }
+        }
+
+        void add_extern_depends(TypeRef const& type)
+        {
+            auto ns = type.TypeNamespace();
+            XLANG_ASSERT(ns != type_namespace);
+            extern_depends[ns].insert(type);
         }
 
         void write_depends(std::string_view const& ns, char impl = 0)
@@ -289,6 +301,7 @@ namespace cppwin32
                     write(type_def);
                     return;
                 }
+                add_extern_depends(type);
                 if (full_namespace)
                 {
                     write("win32::");

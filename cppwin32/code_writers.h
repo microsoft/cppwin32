@@ -170,6 +170,14 @@ namespace cppwin32
 
     void write_delegate(writer& w, TypeDef const& type);
 
+    // Workaround for https://github.com/microsoft/cppwin32/issues/2
+    void write_extern_forward(writer& w, TypeRef const& type)
+    {
+        auto const format = R"(    struct %;
+)";
+        w.write(format, type.TypeName());
+    }
+
     void write_forward(writer& w, TypeDef const& type)
     {
         if (get_category(type) == category::enum_type)
