@@ -1,6 +1,12 @@
 #pragma once
 
-#include <win32/Windows.Win32.Base.h>
+#include <win32/Windows.Win32.Dxgi.h>
+#include <win32/Windows.Win32.Direct3D12.h>
+#include <win32/Windows.Win32.Direct3D11.h>
+#include <win32/Windows.Win32.DisplayDevices.h>
+#include <win32/Windows.Win32.MenusAndResources.h>
+#include <win32/Windows.Win32.SystemServices.h>
+#include <win32/Windows.Win32.WindowsAndMessaging.h>
 
 #include <stdint.h>
 

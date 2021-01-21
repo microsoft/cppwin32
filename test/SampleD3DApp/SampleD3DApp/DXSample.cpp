@@ -3,15 +3,17 @@
 
 using namespace win32;
 using namespace win32::Windows::Win32;
-
-inline constexpr int32_t DXGI_ERROR_NOT_FOUND = 0x887a0002;
+using namespace win32::Windows::Win32::Dxgi;
+using namespace win32::Windows::Win32::SystemServices;
+using namespace win32::Windows::Win32::Direct3D12;
+using namespace win32::Windows::Win32::Direct3D11;
 
 win32::com_ptr<IDXGIAdapter1> DXSample::GetHardwareAdapter(
     IDXGIFactory1* factory,
     bool requestHighPerformanceAdapter)
 {
     win32::com_ptr<IDXGIAdapter1> adapter;
-    for (uint32_t adapterIndex = 0; DXGI_ERROR_NOT_FOUND != factory->EnumAdapters1(adapterIndex, adapter.put_void()); ++adapterIndex, adapter = nullptr)
+    for (uint32_t adapterIndex = 0; DXGI_ERROR_NOT_FOUND != factory->EnumAdapters1(adapterIndex, adapter.put()).Value; ++adapterIndex, adapter = nullptr)
     {
         DXGI_ADAPTER_DESC1 desc;
         adapter->GetDesc1(&desc);
@@ -25,7 +27,7 @@ win32::com_ptr<IDXGIAdapter1> DXSample::GetHardwareAdapter(
 
         // Check to see whether the adapter supports Direct3D 12, but don't create the
         // actual device yet.
-        if (0 == Apis::D3D12CreateDevice(adapter.get(), D3D_FEATURE_LEVEL::D3D_FEATURE_LEVEL_11_0, (guid*)&guid_of<ID3D12Device>(), nullptr))
+        if (0 == D3D12CreateDevice(adapter.get(), D3D_FEATURE_LEVEL::D3D_FEATURE_LEVEL_11_0, (guid*)&guid_of<ID3D12Device>(), nullptr).Value)
         {
             break;
         }

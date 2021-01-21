@@ -643,19 +643,12 @@ namespace cppwin32
 
     void write_class_method(writer& w, method_signature const& method_signature)
     {
-        auto const format = R"xyz(    %% %(%)
+        auto const format = R"xyz(    inline % %(%)
     {
         %WIN32_IMPL_%(%);%
     }
 )xyz";
-        std::string_view modifier;
-        if (method_signature.method().Flags().Static())
-        {
-            modifier = "static ";
-        }
-
         w.write(format,
-            modifier,
             bind<write_method_return>(method_signature),
             method_signature.method().Name(),
             bind<write_method_params>(method_signature),
@@ -668,12 +661,6 @@ namespace cppwin32
 
     void write_class(writer& w, TypeDef const& type)
     {
-        {
-            auto const format = R"(    struct %
-    {
-)";
-            w.write(format, type.TypeName());
-        }
         for (auto&& method : type.MethodList())
         {
             if (method.Flags().Access() == MemberAccess::Public)
@@ -690,15 +677,12 @@ namespace cppwin32
             if (field.Flags().Literal())
             {
                 auto const constant = field.Constant();
-                w.write("        static constexpr % % = %;\n",
+                w.write("    inline constexpr % % = %;\n",
                     constant.Type(),
                     field.Name(),
                     constant);
             }
         }
-        w.write(R"(
-    };
-)");
     }
 
     void write_delegate_params(writer& w, method_signature const& method_signature)
@@ -715,7 +699,7 @@ namespace cppwin32
 
     void write_delegate(writer& w, TypeDef const& type)
     {
-        auto const format = R"xyz(    using % = std::add_pointer_t<% __stdcall(%)>;
+        auto const format = R"xyz(    using % = % __stdcall(%);
 )xyz";
         method_signature method_signature{ get_delegate_method(type) };
 

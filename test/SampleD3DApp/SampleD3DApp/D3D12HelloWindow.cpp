@@ -4,6 +4,10 @@
 
 using namespace win32;
 using namespace win32::Windows::Win32;
+using namespace win32::Windows::Win32::Direct3D12;
+using namespace win32::Windows::Win32::SystemServices;
+using namespace win32::Windows::Win32::Dxgi;
+using namespace win32::Windows::Win32::Direct3D11;
 
 void D3D12HelloWindow::OnInit()
 {
@@ -31,18 +35,18 @@ void D3D12HelloWindow::LoadPipeline()
 
 #if defined(_DEBUG)
     com_ptr<ID3D12Debug> debugController;
-    if (0 == Apis::D3D12GetDebugInterface((guid*)(&guid_of<ID3D12Debug>()), debugController.put_void()))
+    if (D3D12GetDebugInterface((guid*)(&guid_of<ID3D12Debug>()), debugController.put_void()).Value == 0)
     {
         debugController->EnableDebugLayer();
-        dxgiFactoryFlags |= Apis::DXGI_CREATE_FACTORY_DEBUG;
+        dxgiFactoryFlags |= DXGI_CREATE_FACTORY_DEBUG;
     }
 #endif
 
     com_ptr<IDXGIFactory1> factory;
-    Apis::CreateDXGIFactory2(dxgiFactoryFlags, (guid*)(&guid_of<IDXGIFactory>()), factory.put_void());
+    CreateDXGIFactory2(dxgiFactoryFlags, (guid*)(&guid_of<IDXGIFactory>()), factory.put_void());
 
     auto adapter = GetHardwareAdapter(factory.get());
-    Apis::D3D12CreateDevice(adapter.get(), D3D_FEATURE_LEVEL::D3D_FEATURE_LEVEL_11_0, (guid*)(&guid_of<ID3D12Device>()), m_device.put_void());
+    D3D12CreateDevice(adapter.get(), D3D_FEATURE_LEVEL::D3D_FEATURE_LEVEL_11_0, (guid*)(&guid_of<ID3D12Device>()), m_device.put_void());
 
     D3D12_COMMAND_QUEUE_DESC queueDesc{};
     queueDesc.Flags = D3D12_COMMAND_QUEUE_FLAGS::D3D12_COMMAND_QUEUE_FLAG_NONE;

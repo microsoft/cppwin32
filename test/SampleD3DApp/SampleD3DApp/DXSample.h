@@ -23,8 +23,8 @@ struct DXSample
     auto const& Title() const noexcept { return m_title; }
 
 protected:
-    win32::com_ptr<win32::Windows::Win32::IDXGIAdapter1> GetHardwareAdapter(
-        win32::Windows::Win32::IDXGIFactory1* factory,
+    win32::com_ptr<win32::Windows::Win32::Dxgi::IDXGIAdapter1> GetHardwareAdapter(
+        win32::Windows::Win32::Dxgi::IDXGIFactory1* factory,
         bool requestHighPerformanceAdapter = false);
 
     int32_t m_width;

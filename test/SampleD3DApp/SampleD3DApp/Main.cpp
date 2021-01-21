@@ -1,9 +1,14 @@
 #include "pch.h"
 #include "D3D12HelloWindow.h"
 
-using namespace win32::Windows::Win32::Base;
+using namespace win32;
+using namespace win32::Windows::Win32;
+using namespace win32::Windows::Win32::SystemServices;
+using namespace win32::Windows::Win32::WindowsAndMessaging;
+using namespace win32::Windows::Win32::DisplayDevices;
+using namespace win32::Windows::Win32::MenusAndResources;
 
-intptr_t __stdcall WindowProc(intptr_t hwnd, uint32_t message, size_t wParam, intptr_t lParam);
+LRESULT __stdcall WindowProc(HWND hwnd, uint32_t message, WPARAM wParam, LPARAM lParam);
 
 int run(DXSample* sample);
 
@@ -15,78 +20,81 @@ int main()
 
 int run(DXSample* sample)
 {
-    auto hInstance = Apis::GetModuleHandleW(nullptr);
+    HINSTANCE hInstance{ GetModuleHandleW(nullptr) };
 
     WNDCLASSEXW windowClass{};
     windowClass.cbSize = sizeof(WNDCLASSEXW);
-    windowClass.style = Apis::CS_HREDRAW | Apis::CS_VREDRAW;
+    windowClass.style = CS_HREDRAW | CS_VREDRAW;
     windowClass.lpfnWndProc = WindowProc;
     windowClass.hInstance = hInstance;
-    windowClass.hCursor = Apis::LoadCursorW(0, (uint16_t*)(Apis::IDC_ARROW)); // TODO: 
+    windowClass.hCursor = LoadCursorW(HINSTANCE{}, (uint16_t*)(IDC_ARROW)); // Ugly cast tracked by metadata bug https://github.com/microsoft/win32metadata/issues/69
     windowClass.lpszClassName = (uint16_t*)(L"DXSampleClass");
 
-    Apis::RegisterClassExW(&windowClass);
+    RegisterClassExW(&windowClass);
 
     RECT rect{ 0, 0, sample->Width(), sample->Height()};
-    Apis::AdjustWindowRect(&rect, Apis::WS_OVERLAPPEDWINDOW, 0);
+    AdjustWindowRect(&rect, WS_OVERLAPPEDWINDOW, BOOL{0});
 
-    auto hwnd = Apis::CreateWindowExW(
+    auto hwnd = CreateWindowExW(
         0,
         windowClass.lpszClassName,
         (uint16_t*)(sample->Title().c_str()),
-        Apis::WS_OVERLAPPEDWINDOW,
-        Apis::CW_USEDEFAULT,
-        Apis::CW_USEDEFAULT,
+        WS_OVERLAPPEDWINDOW,
+        CW_USEDEFAULT,
+        CW_USEDEFAULT,
         640,
         480,
-        0,
-        0,
+        HWND{},
+        HMENU{},
         hInstance,
         sample);
 
     sample->OnInit();
 
-    Apis::ShowWindow(hwnd, Apis::SW_SHOWDEFAULT);
+    ShowWindow(hwnd, SW_SHOWDEFAULT);
 
     MSG msg;
     do
     {
-        if (Apis::PeekMessageW(&msg, 0, 0, 0, Apis::PM_REMOVE) != 0) // TODO: Constant PM_REMOVE
+        if (PeekMessageW(&msg, HWND{}, 0, 0, PM_REMOVE).Value != 0)
         {
-            Apis::TranslateMessage(&msg);
-            Apis::DispatchMessageW(&msg);
+            TranslateMessage(&msg);
+            DispatchMessageW(&msg);
         }
-    } while (msg.message != Apis::WM_QUIT); // TODO: Constant WM_QUIT
+    } while (msg.message != WM_QUIT);
 
     sample->OnDestroy();
 
     return 0;
 }
 
-intptr_t __stdcall WindowProc(intptr_t hwnd, uint32_t message, size_t wParam, intptr_t lParam)
+LRESULT __stdcall WindowProc(HWND hwnd, uint32_t message, WPARAM wParam, LPARAM lParam)
 {
-    auto sample = reinterpret_cast<DXSample*>(Apis::GetWindowLongW(hwnd, Apis::GWLP_USERDATA));
+    auto sample = reinterpret_cast<DXSample*>(GetWindowLongW(hwnd, GWLP_USERDATA));
 
     switch (message)
     {
-    case Apis::WM_CREATE:
+    case WM_CREATE:
     {
-        auto create_struct = reinterpret_cast<CREATESTRUCTW*>(lParam);
-        Apis::SetWindowLongW(hwnd, Apis::GWLP_USERDATA, reinterpret_cast<intptr_t>(create_struct->lpCreateParams));
-        return 0;
+        auto create_struct = reinterpret_cast<CREATESTRUCTW*>(lParam.Value);
+        SetWindowLongW(
+            hwnd,
+            GWLP_USERDATA,
+            reinterpret_cast<intptr_t>(create_struct->lpCreateParams));
+        return LRESULT{ 0 };
     }
 
-    case Apis::WM_PAINT:
+    case WM_PAINT:
         if (sample)
         {
             sample->OnUpdate();
             sample->OnRender();
         }
-        return 0;
+        return LRESULT{ 0 };
 
-    case Apis::WM_DESTROY: // TODO: constant WM_DESTROY
-        Apis::PostQuitMessage(0);
-        return 0;
+    case WM_DESTROY:
+        PostQuitMessage(0);
+        return LRESULT{ 0 };
     }
-    return Apis::DefWindowProcW(hwnd, message, wParam, lParam);
+    return DefWindowProcW(hwnd, message, wParam, lParam);
 }
