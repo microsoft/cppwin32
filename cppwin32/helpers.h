@@ -1,7 +1,5 @@
 #pragma once
 
-#include "type_writers.h"
-
 namespace cppwin32
 {
     using namespace winmd::reader;

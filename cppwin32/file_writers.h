@@ -44,13 +44,11 @@ namespace cppwin32
     {
         writer w;
         w.type_namespace = ns;
+        
+        w.write("#include \"win32/impl/complex_structs.h\"\n");
 
         {
             auto wrap = wrap_type_namespace(w, ns);
-
-            w.write("#pragma region structs\n");
-            write_structs(w, members.structs);
-            w.write("#pragma endregion structs\n\n");
 
             w.write("#pragma region interfaces\n");
             write_interfaces(w, members.interfaces);
@@ -98,5 +96,41 @@ namespace cppwin32
 
         w.write_depends(w.type_namespace, '2');
         w.save_header();
+    }
+
+    static void write_complex_structs_h(cache const& c)
+    {
+        writer w;
+
+        type_dependency_graph graph;
+        for (auto&& [ns, members] : c.namespaces())
+        {
+            for (auto&& s : members.structs)
+            {
+                graph.add_struct(s);
+            }
+        }
+
+        graph.walk_graph([&](TypeDef const& type)
+            {
+                if (!is_nested(type))
+                {
+                    auto guard = wrap_type_namespace(w, type.TypeNamespace());
+                    write_struct(w, type);
+                }
+            });
+
+        write_close_file_guard(w);
+        w.swap();
+
+        write_preamble(w);
+        write_open_file_guard(w, "complex_structs");
+
+        for (auto&& depends : w.depends)
+        {
+            w.write_depends(depends.first, '0');
+        }
+
+        w.flush_to_file(settings.output_folder + "win32/impl/complex_structs.h");
     }
 }

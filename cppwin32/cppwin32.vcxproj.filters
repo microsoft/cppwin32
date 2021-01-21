@@ -45,6 +45,9 @@
     <ClInclude Include="file_writers.h">
       <Filter>Header Files</Filter>
     </ClInclude>
+    <ClInclude Include="type_dependency_graph.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="main.cpp">

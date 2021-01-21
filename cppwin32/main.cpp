@@ -3,6 +3,7 @@
 #include "settings.h"
 #include "task_group.h"
 #include "text_writer.h"
+#include "type_dependency_graph.h"
 #include "type_writers.h"
 #include "code_writers.h"
 #include "file_writers.h"
@@ -182,6 +183,8 @@ Where <spec> is one or more of:
                         write_namespace_h(ns, members);
                     });
             }
+            write_complex_structs_h(c);
+
             std::filesystem::copy_file("base.h", settings.output_folder + "win32/" + "base.h", std::filesystem::copy_options::overwrite_existing);
         }
         catch (usage_exception const&)

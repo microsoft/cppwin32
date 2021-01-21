@@ -256,6 +256,7 @@ namespace cppwin32
 
         void write(TypeDef const& type)
         {
+            add_depends(type);
             if (is_nested(type))
             {
                 write(type.TypeName());
