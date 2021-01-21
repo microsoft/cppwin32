@@ -875,8 +875,8 @@ namespace cppwin32
 )";
         auto abi_guard = w.push_abi_types(true);
 
-        // TODO: Fix this type:
-        if (type.TypeName() == "IUIAutomation6" && type.TypeNamespace() == "Windows.Win32.WinAuto")
+        // BUG: Workaround https://github.com/microsoft/win32metadata/issues/127
+        if (type.TypeName() == "IUIAutomation6" && type.TypeNamespace() == "Windows.Win32.WindowsAccessibility")
         {
             for (auto&& method : type.MethodList())
             {
