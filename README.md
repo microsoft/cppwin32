@@ -9,7 +9,7 @@ Another goal under investigation and discussion is to converge this projection w
 
 ## How it works
 
-This projection is similar to [C++/WinRT](https://github.com/microsoft/cppwinrt/) in that it generates projection header files from metadata. Instead of using Windows Runtime metadata, it uses metadata produced by the [Win32 Metadata Project](https://github.com/microsoft/cppwinrt/).
+This projection is similar to [C++/WinRT](https://github.com/microsoft/cppwinrt/) in that it generates projection header files from metadata. Instead of using Windows Runtime metadata, it uses metadata produced by the [Win32 Metadata Project](https://github.com/microsoft/win32metadata/).
 
 This project is still in the early stages and will continue to grow and evolve. Watch for a Nuget package soon.
 
