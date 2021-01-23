@@ -887,7 +887,7 @@ WIN32_EXPORT namespace win32
 // TODO: Hook this up to a real version
 #define CPPWIN32_VERSION "0.0.0.1"
 
-// WINRT_version is used by Microsoft to analyze C++/WinRT library adoption and inform future product decisions.
+// WIN32_version is used by Microsoft to analyze C++/Win32 library adoption and inform future product decisions.
 extern "C"
 __declspec(selectany)
 char const* const WIN32_version = "C++/Win32 version:" CPPWIN32_VERSION;
